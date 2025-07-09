@@ -53,6 +53,7 @@ CREATE TABLE photos (
   class_id INT NOT NULL,
   is_public BOOLEAN DEFAULT true,
   recognition_data JSON DEFAULT NULL,
+  activity text DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (uploader_id) REFERENCES users(id),
   FOREIGN KEY (class_id) REFERENCES classes(id)

@@ -1,0 +1,64 @@
+# 环境变量
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 依赖文件
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 覆盖率目录
+lib-cov
+coverage/
+*.lcov
+.nyc_output
+
+# 构建输出
+dist/
+build/
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 上传文件目录（如果有）
+uploads/
+
+# 数据库文件（如果使用 SQLite）
+*.db
+*.sqlite
+*.sqlite3
+
+# 缓存文件
+.cache/
+.parcel-cache/
+
+# 测试文件
+.jest/
+
+./config/init_database.sql

@@ -1,13 +1,12 @@
 以下是为Cursor编写的提示词，用于搭建幼儿园家校沟通系统的网页框架（MySQL数据库）：
 
-```markdown
+
 **目标**：基于产品需求文档，实现幼儿园家校沟通系统的网页框架原型，包含基础数据库结构、核心页面和API接口。人脸识别功能暂时模拟实现。
 
 **技术栈要求**：
 - 前端：vue
 - 后端：Node.js 
 - 数据库：MySQL
-- ORM：Sequelize
 
 **数据库设计**：
 ```sql
@@ -159,13 +158,6 @@ Response: 同照片列表
    - 在Photo表留出`features`和`recognition_data`字段
    - 创建`/api/ai/train`接口占位符
 
-**输出要求**：
-1. 完整的SQL初始化脚本
-2. Sequelize模型定义文件
-3. 核心API实现代码
-4. 基础React页面框架（使用Ant Design）
-5. Dockerfile和docker-compose.yml
-```
 
 这个提示词包含：
 1. 清晰的数据库结构设计
