@@ -1,0 +1,176 @@
+以下是为Cursor编写的提示词，用于搭建幼儿园家校沟通系统的网页框架（MySQL数据库）：
+
+```markdown
+**目标**：基于产品需求文档，实现幼儿园家校沟通系统的网页框架原型，包含基础数据库结构、核心页面和API接口。人脸识别功能暂时模拟实现。
+
+**技术栈要求**：
+- 前端：vue
+- 后端：Node.js 
+- 数据库：MySQL
+- ORM：Sequelize
+
+**数据库设计**：
+```sql
+/* 用户表 */
+CREATE TABLE users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(50) UNIQUE NOT NULL,  -- 登录账号
+  password VARCHAR(100) NOT NULL,        -- 加密存储
+  role ENUM('teacher', 'parent') NOT NULL,
+  full_name VARCHAR(100) NOT NULL,       -- 用户全名
+  child_id INT DEFAULT NULL,             -- 家长关联的孩子ID
+  class_id INT DEFAULT NULL,             -- 教师关联的班级ID
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+/* 孩子档案表 */
+CREATE TABLE children (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,
+  class_id INT NOT NULL,                 -- 所属班级
+  features JSON DEFAULT NULL,            -- 预留人脸特征数据
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (class_id) REFERENCES classes(id)
+);
+
+/* 班级表 */
+CREATE TABLE classes (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(100) NOT NULL,            -- 班级名称
+  teacher_id INT NOT NULL,               -- 班主任
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (teacher_id) REFERENCES users(id)
+);
+
+/* 照片表 */
+CREATE TABLE photos (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  path VARCHAR(255) NOT NULL,            -- 图片存储路径
+  uploader_id INT NOT NULL,              -- 上传教师
+  class_id INT NOT NULL,                 -- 所属班级
+  is_public BOOLEAN DEFAULT true,        -- 是否公开照片
+  recognition_data JSON DEFAULT NULL,    -- 预留识别结果{child_ids: [1,2,3]}
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (uploader_id) REFERENCES users(id),
+  FOREIGN KEY (class_id) REFERENCES classes(id)
+);
+
+/* 家长-孩子关联表 */
+CREATE TABLE parent_child (
+  parent_id INT NOT NULL,
+  child_id INT NOT NULL,
+  PRIMARY KEY (parent_id, child_id),
+  FOREIGN KEY (parent_id) REFERENCES users(id),
+  FOREIGN KEY (child_id) REFERENCES children(id)
+);
+
+/* 点赞记录表 */
+CREATE TABLE likes (
+  user_id INT NOT NULL,
+  photo_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, photo_id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (photo_id) REFERENCES photos(id)
+);
+```
+
+**核心功能模块**：
+1. 认证系统
+   - JWT登录/注册接口
+   - 角色权限控制（教师/家长）
+
+2. 教师端功能
+   - POST /api/photos：照片批量上传接口
+   - GET /api/classes/:id/children：班级学生管理
+   - 照片管理界面（React组件）
+
+3. 家长端功能
+   - GET /api/photos/public：获取公共照片墙
+   - GET /api/photos/private：获取孩子专属照片
+   - POST /api/photos/like：照片点赞功能
+
+4. AI识别模拟
+   - 照片上传后生成模拟识别数据
+   ```json
+   // recognition_data 示例
+   {
+     "child_ids": [3,7,12],
+     "confidence": 0.92
+   }
+   ```
+
+**页面结构**：
+```
+src/
+├── components/
+│   ├── TeacherDashboard.js
+│   ├── ParentDashboard.js
+│   ├── PhotoUploader.js
+│   ├── PublicGallery.js
+│   └── PrivateGallery.js
+├── services/
+│   ├── authAPI.js
+│   ├── photoAPI.js
+│   └── classAPI.js
+├── App.js
+└── index.js
+```
+
+**关键API规范**：
+```javascript
+// 照片上传 (教师端)
+POST /api/photos
+Body: {
+  images: [File],  // 多文件
+  classId: int,
+  isPublic: boolean
+}
+
+// 获取孩子照片 (家长端)
+GET /api/photos/private
+Response: [{
+  id: int,
+  path: string,
+  createdAt: date,
+  children: [{id, name}] // 照片中的孩子
+}]
+
+// 自然语言搜索 (模拟)
+GET /api/photos/search?query="上周五陈小明的照片"
+Response: 同照片列表
+```
+
+**模拟数据要求**：
+1. 初始化测试数据：
+   - 2个班级，3名教师，20名学生，10位家长
+   - 每个班级15张照片（1/3含多个孩子）
+
+
+
+
+**注意事项**：
+1. 优先实现核心流程：
+   教师上传 → 照片自动归类 → 家长查看
+2. 安全要求：
+   - 家长只能看到自己孩子的照片
+   - 密码加密存储（bcrypt）
+3. 预留AI接口：
+   - 在Photo表留出`features`和`recognition_data`字段
+   - 创建`/api/ai/train`接口占位符
+
+**输出要求**：
+1. 完整的SQL初始化脚本
+2. Sequelize模型定义文件
+3. 核心API实现代码
+4. 基础React页面框架（使用Ant Design）
+5. Dockerfile和docker-compose.yml
+```
+
+这个提示词包含：
+1. 清晰的数据库结构设计
+2. 模块化的功能划分
+3. 详细的接口规范
+4. 模拟实现方案
+5. 安全性和扩展性考虑
+6. 具体的输出要求

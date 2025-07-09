@@ -1,0 +1,24 @@
+{
+  "name": "kindergarten-communication-system",
+  "version": "1.0.0",
+  "description": "幼儿园家校沟通系统",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run serve",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "test-db": "cd backend && npm run test-db"
+  },
+  "keywords": [
+    "kindergarten",
+    "communication",
+    "vue",
+    "nodejs",
+    "mysql"
+  ],
+  "author": "",
+  "license": "MIT"
+} 
