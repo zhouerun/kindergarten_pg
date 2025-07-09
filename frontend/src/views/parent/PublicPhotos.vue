@@ -10,7 +10,7 @@
       <el-form :model="filterForm" :inline="true">
         <el-form-item label="班级">
           <el-select v-model="filterForm.classId" placeholder="选择班级" @change="loadPhotos">
-            <el-option label="全部班级" :value="null" />
+            <el-option label="全部班级" :value="''" />
             <el-option 
               v-for="cls in classes" 
               :key="cls.id" 
@@ -197,7 +197,7 @@ export default {
     const pageSize = ref(20);
     
     const filterForm = reactive({
-      classId: null,
+      classId: '',
       dateRange: null,
       query: ''
     });
@@ -243,7 +243,7 @@ export default {
           limit: pageSize.value
         };
         
-        if (filterForm.classId) {
+        if (filterForm.classId && filterForm.classId !== '') {
           params.classId = filterForm.classId;
         }
         
@@ -286,7 +286,7 @@ export default {
     
     const resetFilter = () => {
       Object.assign(filterForm, {
-        classId: null,
+        classId: '',
         dateRange: null,
         query: ''
       });

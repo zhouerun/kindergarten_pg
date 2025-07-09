@@ -271,6 +271,9 @@ export default {
     const saveChildrenRelation = async () => {
       try {
         saving.value = true;
+        console.log('=== 关联家长和孩子请求开始 ===');
+        console.log('用户信息:', selectedParent.value);
+        console.log('请求体:', selectedChildrenIds.value);
         
         await axios.put(`/users/${selectedParent.value.id}/children`, {
           children: selectedChildrenIds.value

@@ -20,8 +20,8 @@
         
         <el-form-item label="照片类型">
           <el-radio-group v-model="uploadForm.isPublic">
-            <el-radio :label="true">公开照片</el-radio>
-            <el-radio :label="false">私密照片</el-radio>
+            <el-radio :label=0>公开照片</el-radio>
+            <el-radio :label=1>私密照片</el-radio>
           </el-radio-group>
         </el-form-item>
         
@@ -32,13 +32,22 @@
             drag
             :auto-upload="false"
             :on-change="handleFileChange"
+            :on-remove="handleRemove"
             :before-upload="beforeUpload"
             :file-list="fileList"
             multiple
             accept="image/*"
-            action="/photos"
-          >
-            <el-icon><Plus /></el-icon>
+            :show-file-list="true"
+                      >
+            <el-icon class="el-icon--upload"><Plus /></el-icon>
+            <div class="el-upload__text">
+              将文件拖拽到此处，或<em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                只能上传jpg/png/gif文件，且不超过10MB
+              </div>
+            </template>
           </el-upload>
         </el-form-item>
         
@@ -55,7 +64,6 @@
         </el-form-item>
       </el-form>
     </el-card>
-    
     <!-- 上传历史 -->
     <el-card v-if="uploadHistory.length > 0" style="margin-top: 20px;">
       <template #header>
@@ -103,7 +111,7 @@ export default {
   },
   setup() {
     const store = useStore();
-    const upload = ref(null);
+    const uploadRef = ref(null);
     const uploading = ref(false);
     const fileList = ref([]);
     const classes = ref([]);
@@ -111,7 +119,7 @@ export default {
     
     const uploadForm = reactive({
       classId: null,
-      isPublic: true
+      isPublic: 1
     });
     
     const uploadHeaders = computed(() => ({
@@ -138,6 +146,7 @@ export default {
     };
     
     const beforeUpload = (file) => {
+      console.log(file);
       const isImage = file.type.startsWith('image/');
       const isLt10M = file.size / 1024 / 1024 < 10;
       
@@ -152,14 +161,76 @@ export default {
       return true;
     };
     
-    const handleUpload = () => {
+    const handleUpload = async () => {
       if (!uploadForm.classId) {
         ElMessage.error('请选择目标班级');
         return;
       }
       
+      if (fileList.value.length === 0) {
+        ElMessage.error('请选择要上传的文件');
+        return;
+      }
+      
       uploading.value = true;
-      upload.value.submit();
+      
+      try {
+        // 创建FormData对象
+        const formData = new FormData();
+        formData.append('classId', uploadForm.classId);
+        formData.append('isPublic', uploadForm.isPublic);
+        
+        // 添加所有文件到FormData
+        fileList.value.forEach(file => {
+          formData.append('images', file.raw); // file.raw是实际的File对象
+        });
+        
+        console.log('开始上传，文件数量:', fileList.value.length);
+        
+        // 发送上传请求到正确的端点
+        const response = await axios.post('/photos', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${store.state.token}`
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            console.log(`上传进度: ${percentCompleted}%`);
+          }
+        });
+        
+        console.log('上传成功:', response.data);
+        ElMessage.success(`成功上传 ${fileList.value.length} 个文件`);
+        
+        // 添加到上传历史
+        fileList.value.forEach(file => {
+          uploadHistory.value.unshift({
+            filename: file.name,
+            status: 'success',
+            recognitionResult: response.data.photos?.[0]?.recognition_data?.child_ids || [],
+            uploadTime: new Date().toLocaleString()
+          });
+        });
+        
+        // 清空文件列表
+        clearFiles();
+        
+      } catch (error) {
+        console.error('上传失败:', error);
+        ElMessage.error('上传失败: ' + (error.response?.data?.error || error.message));
+        
+        // 添加失败记录
+        fileList.value.forEach(file => {
+          uploadHistory.value.unshift({
+            filename: file.name,
+            status: 'error',
+            recognitionResult: null,
+            uploadTime: new Date().toLocaleString()
+          });
+        });
+      } finally {
+        uploading.value = false;
+      }
     };
     
     const handleSuccess = (response, file) => {
@@ -192,16 +263,36 @@ export default {
       });
     };
     
-    const handleRemove = (file) => {
-      const index = fileList.value.findIndex(f => f.uid === file.uid);
-      if (index > -1) {
-        fileList.value.splice(index, 1);
-      }
+    const handleRemove = (file, newFileList) => {
+      console.log('移除文件:', file.name);
+      console.log('移除后文件列表长度:', newFileList.length);
+      
+      // 更新文件列表
+      fileList.value = newFileList;
+      
+      // 用户反馈
+      ElMessage.info(`已移除文件: ${file.name}`);
     };
     
     const clearFiles = () => {
       fileList.value = [];
-      upload.value.clearFiles();
+      uploadRef.value.clearFiles();
+    };
+
+    const handleFileChange = (file, newFileList) => {
+      console.log('文件变化:', file, newFileList);
+      console.log('当前文件列表长度:', newFileList.length);
+      
+      // 更新文件列表（修复参数名冲突）
+      fileList.value = newFileList;
+      
+      // 用户反馈
+      if (file.status === 'ready') {
+        ElMessage.success(`已选择文件: ${file.name}`);
+      }
+      
+      // 调试信息
+      console.log('更新后的fileList.value长度:', fileList.value.length);
     };
     
     onMounted(() => {
@@ -209,7 +300,7 @@ export default {
     });
     
     return {
-      upload,
+      uploadRef,
       uploading,
       fileList,
       classes,
@@ -217,6 +308,7 @@ export default {
       uploadHeaders,
       uploadData,
       uploadHistory,
+      handleFileChange,
       beforeUpload,
       handleUpload,
       handleSuccess,

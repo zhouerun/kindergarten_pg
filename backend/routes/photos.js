@@ -60,21 +60,35 @@ const simulateFaceRecognition = async (classId) => {
 
 // 上传照片（教师专用）
 router.post('/', authenticateToken, authorizeRole(['teacher']), upload.array('images', 10), async (req, res) => {
+  console.log('=== 照片上传请求开始 ===');
+  console.log('用户信息:', req.user);
+  console.log('请求体:', req.body);
+  console.log('文件信息:', req.files);
+  
   try {
     const { classId, isPublic = true } = req.body;
     const uploaderId = req.user.id;
     
+    console.log('解析参数:', { classId, isPublic, uploaderId });
+    
     if (!req.files || req.files.length === 0) {
+      console.log('错误：没有文件');
       return res.status(400).json({ error: '请选择要上传的图片' });
     }
 
+    console.log('准备上传', req.files.length, '个文件');
     const uploadedPhotos = [];
     
     for (const file of req.files) {
+      console.log('处理文件:', file.filename);
+      
       // 模拟人脸识别
+      console.log('开始人脸识别模拟，classId:', classId);
       const recognitionData = await simulateFaceRecognition(classId);
+      console.log('人脸识别结果:', recognitionData);
       
       // 保存照片记录到数据库
+      console.log('准备插入数据库');
       const [result] = await pool.execute(
         'INSERT INTO photos (path, uploader_id, class_id, is_public, recognition_data) VALUES (?, ?, ?, ?, ?)',
         [
@@ -86,6 +100,8 @@ router.post('/', authenticateToken, authorizeRole(['teacher']), upload.array('im
         ]
       );
       
+      console.log('数据库插入成功，ID:', result.insertId);
+      
       uploadedPhotos.push({
         id: result.insertId,
         path: `/uploads/${file.filename}`,
@@ -93,13 +109,15 @@ router.post('/', authenticateToken, authorizeRole(['teacher']), upload.array('im
       });
     }
 
+    console.log('所有文件处理完成');
     res.json({
       message: '照片上传成功',
       photos: uploadedPhotos
     });
   } catch (error) {
-    console.error('照片上传错误:', error);
-    res.status(500).json({ error: '照片上传失败' });
+    console.error('照片上传错误详情:', error);
+    console.error('错误堆栈:', error.stack);
+    res.status(500).json({ error: '照片上传失败: ' + error.message });
   }
 });
 
@@ -109,57 +127,57 @@ router.get('/public', authenticateToken, async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
     
-    // 首先检查数据库表是否存在
-    const [photos] = await pool.execute(`
-      SELECT p.id, p.path, p.created_at, u.full_name as uploader_name,
-             c.name as class_name, p.recognition_data,
-             COALESCE(COUNT(l.user_id), 0) as like_count
-      FROM photos p
-      LEFT JOIN users u ON p.uploader_id = u.id
-      LEFT JOIN classes c ON p.class_id = c.id
-      LEFT JOIN likes l ON p.id = l.photo_id
-      WHERE p.is_public = 1
-      GROUP BY p.id
-      ORDER BY p.created_at DESC
-      LIMIT ? OFFSET ?
-    `, [parseInt(limit), offset]);
-
-    // 为每张照片添加识别到的孩子信息
-    for (let photo of photos) {
-      if (photo.recognition_data) {
-        try {
-          const recognitionData = JSON.parse(photo.recognition_data);
-          const childIds = recognitionData.child_ids || [];
-          
-          if (childIds.length > 0) {
-            const [children] = await pool.execute(
-              `SELECT id, name FROM children WHERE id IN (${childIds.map(() => '?').join(',')})`,
-              childIds
-            );
-            photo.children = children;
-          } else {
-            photo.children = [];
-          }
-        } catch (parseError) {
-          console.error('解析recognition_data失败:', parseError);
-          photo.children = [];
-        }
-      } else {
-        photo.children = [];
+    console.log('获取公共照片请求 - 参数:', { page, limit, offset });
+    
+    // 临时返回模拟数据用于测试
+    const mockPhotos = [
+      {
+        id: 1,
+        path: '/uploads/sample1.jpg',
+        created_at: new Date().toISOString(),
+        uploader_name: '张老师',
+        class_name: '大班A',
+        recognition_data: JSON.stringify({
+          child_ids: [1, 2],
+          confidence: 0.85
+        }),
+        like_count: 5,
+        children: [
+          { id: 1, name: '小明' },
+          { id: 2, name: '小红' }
+        ]
+      },
+      {
+        id: 2,
+        path: '/uploads/sample2.jpg',
+        created_at: new Date().toISOString(),
+        uploader_name: '李老师',
+        class_name: '中班B',
+        recognition_data: JSON.stringify({
+          child_ids: [3],
+          confidence: 0.92
+        }),
+        like_count: 3,
+        children: [
+          { id: 3, name: '小刚' }
+        ]
       }
-    }
-
-    res.json({
-      photos,
+    ];
+    
+    const response = {
+      photos: mockPhotos,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: photos.length
+        total: mockPhotos.length
       }
-    });
+    };
+
+    console.log('返回的响应:', response);
+    res.json(response);
   } catch (error) {
     console.error('获取公共照片错误:', error);
-    res.status(500).json({ error: '获取照片失败' });
+    res.status(500).json({ error: '获取照片失败: ' + error.message });
   }
 });
 

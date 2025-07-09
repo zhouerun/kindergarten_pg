@@ -13,6 +13,12 @@ module.exports = defineConfig({
         changeOrigin: true,
         secure: false,
         logLevel: 'debug'
+      },
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        logLevel: 'debug'
       }
     }
   },

@@ -42,7 +42,7 @@ CREATE TABLE photos (
   path VARCHAR(255) NOT NULL,
   uploader_id INT NOT NULL,
   class_id INT NOT NULL,
-  is_public BOOLEAN DEFAULT true,
+  is_public tinyint(1) DEFAULT 1,
   recognition_data JSON DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (uploader_id) REFERENCES users(id),

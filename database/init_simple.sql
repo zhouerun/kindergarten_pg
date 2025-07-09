@@ -104,10 +104,10 @@ INSERT INTO parent_child (parent_id, child_id) VALUES
 
 -- 插入示例照片
 INSERT INTO photos (path, uploader_id, class_id, is_public, recognition_data) VALUES
-('/uploads/class1_photo1.jpg', 1, 1, true, '{"child_ids": [1, 2], "confidence": 0.95}'),
-('/uploads/class1_photo2.jpg', 1, 1, true, '{"child_ids": [3], "confidence": 0.92}'),
-('/uploads/class2_photo1.jpg', 2, 2, true, '{"child_ids": [5, 6], "confidence": 0.94}'),
-('/uploads/class2_photo2.jpg', 2, 2, true, '{"child_ids": [7], "confidence": 0.93}');
+('/uploads/class1_photo1.jpg', 1, 1, 1, '{"child_ids": [1, 2], "confidence": 0.95}'),
+('/uploads/class1_photo2.jpg', 1, 1, 1, '{"child_ids": [3], "confidence": 0.92}'),
+('/uploads/class2_photo1.jpg', 2, 2, 1, '{"child_ids": [5, 6], "confidence": 0.94}'),
+('/uploads/class2_photo2.jpg', 2, 2, 1, '{"child_ids": [7], "confidence": 0.93}');
 
 -- 添加外键约束
 ALTER TABLE classes ADD FOREIGN KEY (teacher_id) REFERENCES users(id);

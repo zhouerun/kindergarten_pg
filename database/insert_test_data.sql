@@ -27,7 +27,7 @@ INSERT INTO parent_child (parent_id, child_id) VALUES
 
 -- 插入一些测试照片
 INSERT INTO photos (path, uploader_id, class_id, is_public, recognition_data) VALUES
-  ('/uploads/photo1.jpg', 1, 1, 1, '{"child_ids": [1, 2], "confidence": 0.9}'),
+  ('/uploads/photo1.jpg', 1, 1,1, '{"child_ids": [1, 2], "confidence": 0.9}'),
   ('/uploads/photo2.jpg', 1, 1, 1, '{"child_ids": [3], "confidence": 0.8}'),
   ('/uploads/photo3.jpg', 1, 2, 1, '{"child_ids": [4, 5], "confidence": 0.85}'),
   ('/uploads/photo4.jpg', 1, 3, 1, '{"child_ids": [6], "confidence": 0.92}'),

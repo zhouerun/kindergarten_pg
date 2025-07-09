@@ -177,6 +177,10 @@ router.get('/children', authenticateToken, authorizeRole(['parent']), async (req
 // 关联家长和孩子
 router.post('/parent-child', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
   try {
+    console.log('=== 关联家长和孩子请求开始 ===');
+    console.log('用户信息:', req.user);
+    console.log('请求体:', req.body);
+    
     const { parentId, childId } = req.body;
 
     if (!parentId || !childId) {
@@ -255,6 +259,86 @@ router.delete('/parent-child', authenticateToken, authorizeRole(['teacher']), as
   } catch (error) {
     console.error('取消关联错误:', error);
     res.status(500).json({ error: '取消关联失败' });
+  }
+});
+
+// 批量更新家长和孩子的关联关系
+router.put('/:id/children', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
+  try {
+    console.log('=== 批量更新家长和孩子关联关系请求开始 ===');
+    console.log('用户信息:', req.user);
+    console.log('家长ID:', req.params.id);
+    console.log('请求体:', req.body);
+    
+    const parentId = req.params.id;
+    const { children } = req.body;
+
+    if (!parentId) {
+      return res.status(400).json({ error: '家长ID不能为空' });
+    }
+
+    if (!Array.isArray(children)) {
+      return res.status(400).json({ error: '孩子列表必须是数组' });
+    }
+
+    // 检查家长是否存在
+    const [parent] = await pool.execute(
+      'SELECT id FROM users WHERE id = ? AND role = "parent"',
+      [parentId]
+    );
+
+    if (parent.length === 0) {
+      return res.status(404).json({ error: '家长不存在' });
+    }
+
+    // 检查所有孩子是否存在
+    if (children.length > 0) {
+      const placeholders = children.map(() => '?').join(',');
+      const [existingChildren] = await pool.execute(
+        `SELECT id FROM children WHERE id IN (${placeholders})`,
+        children
+      );
+
+      if (existingChildren.length !== children.length) {
+        return res.status(400).json({ error: '部分孩子不存在' });
+      }
+    }
+
+    // 开始事务
+    await pool.execute('START TRANSACTION');
+
+    try {
+      // 删除该家长的所有现有关联
+      await pool.execute(
+        'DELETE FROM parent_child WHERE parent_id = ?',
+        [parentId]
+      );
+
+      // 添加新的关联
+      if (children.length > 0) {
+        const values = children.map(childId => [parentId, childId]);
+        const placeholders = values.map(() => '(?, ?)').join(',');
+        const flatValues = values.flat();
+        
+        await pool.execute(
+          `INSERT INTO parent_child (parent_id, child_id) VALUES ${placeholders}`,
+          flatValues
+        );
+      }
+
+      // 提交事务
+      await pool.execute('COMMIT');
+
+      console.log('家长和孩子关联关系更新成功');
+      res.json({ message: '关联关系更新成功' });
+    } catch (error) {
+      // 回滚事务
+      await pool.execute('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('批量更新家长和孩子关联关系错误:', error);
+    res.status(500).json({ error: '更新关联关系失败: ' + error.message });
   }
 });
 
