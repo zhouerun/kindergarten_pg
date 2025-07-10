@@ -304,12 +304,14 @@ router.put('/:id/children', authenticateToken, authorizeRole(['teacher']), async
       }
     }
 
-    // 开始事务
-    await pool.execute('START TRANSACTION');
-
+    // 获取连接并开始事务
+    const connection = await pool.getConnection();
+    
     try {
+      await connection.beginTransaction();
+
       // 删除该家长的所有现有关联
-      await pool.execute(
+      await connection.execute(
         'DELETE FROM parent_child WHERE parent_id = ?',
         [parentId]
       );
@@ -320,21 +322,24 @@ router.put('/:id/children', authenticateToken, authorizeRole(['teacher']), async
         const placeholders = values.map(() => '(?, ?)').join(',');
         const flatValues = values.flat();
         
-        await pool.execute(
+        await connection.execute(
           `INSERT INTO parent_child (parent_id, child_id) VALUES ${placeholders}`,
           flatValues
         );
       }
 
       // 提交事务
-      await pool.execute('COMMIT');
+      await connection.commit();
 
       console.log('家长和孩子关联关系更新成功');
       res.json({ message: '关联关系更新成功' });
     } catch (error) {
       // 回滚事务
-      await pool.execute('ROLLBACK');
+      await connection.rollback();
       throw error;
+    } finally {
+      // 释放连接
+      connection.release();
     }
   } catch (error) {
     console.error('批量更新家长和孩子关联关系错误:', error);
