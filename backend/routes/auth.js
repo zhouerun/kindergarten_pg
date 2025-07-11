@@ -58,12 +58,13 @@ router.post('/login', [
   }
 });
 
-// 用户注册（仅管理员可用）
+// 用户注册
 router.post('/register', [
   body('username').isLength({ min: 3 }).withMessage('用户名至少3位'),
   body('password').isLength({ min: 6 }).withMessage('密码至少6位'),
   body('role').isIn(['teacher', 'parent']).withMessage('角色必须是teacher或parent'),
-  body('full_name').notEmpty().withMessage('姓名不能为空')
+  body('full_name').notEmpty().withMessage('姓名不能为空'),
+  body('telephone_number').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -71,7 +72,7 @@ router.post('/register', [
       return res.status(400).json({ error: errors.array()[0].msg });
     }
 
-    const { username, password, role, full_name, class_id } = req.body;
+    const { username, password, role, full_name, telephone_number, class_id } = req.body;
 
     // 检查用户名是否已存在
     const [existingUsers] = await pool.execute(
@@ -83,13 +84,23 @@ router.post('/register', [
       return res.status(400).json({ error: '用户名已存在' });
     }
 
+    // 检查电话号码是否已存在
+    const [existingPhones] = await pool.execute(
+      'SELECT id FROM users WHERE telephone_number = ?',
+      [telephone_number]
+    );
+
+    if (existingPhones.length > 0) {
+      return res.status(400).json({ error: '电话号码已存在' });
+    }
+
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 创建用户
     const [result] = await pool.execute(
-      'INSERT INTO users (username, password, role, full_name, class_id) VALUES (?, ?, ?, ?, ?)',
-      [username, hashedPassword, role, full_name, class_id || null]
+      'INSERT INTO users (username, password, role, full_name, telephone_number, class_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [username, hashedPassword, role, full_name, telephone_number, class_id || null]
     );
 
     res.status(201).json({
@@ -99,6 +110,7 @@ router.post('/register', [
         username,
         role,
         full_name,
+        telephone_number,
         class_id
       }
     });

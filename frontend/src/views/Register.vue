@@ -49,6 +49,14 @@
           />
         </el-form-item>
         
+        <el-form-item label="电话号码" prop="telephone">
+          <el-input 
+            v-model="registerData.telephone" 
+            placeholder="请输入电话号码"
+            :prefix-icon="Phone"
+          />
+        </el-form-item>
+        
         <el-form-item label="角色" prop="role">
           <el-select 
             v-model="registerData.role" 
@@ -84,7 +92,7 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { User, Lock } from '@element-plus/icons-vue';
+import { User, Lock, Phone } from '@element-plus/icons-vue';
 import axios from 'axios';
 
 export default {
@@ -99,6 +107,7 @@ export default {
       password: '',
       confirmPassword: '',
       fullName: '',
+      telephone: '',
       role: ''
     });
     
@@ -127,6 +136,10 @@ export default {
         { required: true, message: '请输入姓名', trigger: 'blur' },
         { min: 2, max: 10, message: '姓名长度在 2 到 10 个字符', trigger: 'blur' }
       ],
+      telephone: [
+        { required: true, message: '请输入电话号码', trigger: 'blur' },
+        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+      ],
       role: [
         { required: true, message: '请选择角色', trigger: 'change' }
       ]
@@ -144,6 +157,7 @@ export default {
           password: registerData.password,
           role: registerData.role,
           full_name: registerData.fullName,
+          telephone_number: registerData.telephone,
           class_id: registerData.classId || null
         });
         
@@ -163,7 +177,8 @@ export default {
       loading,
       handleRegister,
       User,
-      Lock
+      Lock,
+      Phone
     };
   }
 };

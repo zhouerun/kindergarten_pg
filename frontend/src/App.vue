@@ -56,6 +56,10 @@
                 <el-icon><House /></el-icon>
                 <span>家长工作台</span>
               </el-menu-item>
+              <el-menu-item index="/parent/binding">
+                <el-icon><Link /></el-icon>
+                <span>绑定孩子</span>
+              </el-menu-item>
               <el-menu-item index="/parent/photos">
                 <el-icon><Picture /></el-icon>
                 <span>我的照片</span>
@@ -80,9 +84,13 @@
 import { computed } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
+import { Link } from '@element-plus/icons-vue';
 
 export default {
   name: 'App',
+  components: {
+    Link
+  },
   setup() {
     const store = useStore();
     const router = useRouter();

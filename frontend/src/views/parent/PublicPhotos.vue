@@ -96,6 +96,10 @@
             <div class="photo-meta">
               <p class="photo-class">{{ photo.class_name }}</p>
               <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
+              <p class="photo-activity" v-if="photo.activity">
+                <el-icon><Location /></el-icon>
+                {{ photo.activity }}
+              </p>
               <p class="photo-children" v-if="photo.recognition_data">
                 <el-icon><User /></el-icon>
                 {{ getChildrenNames(photo.recognition_data) }}
@@ -142,6 +146,10 @@
               <div class="overlay-content">
                 <p class="photo-class">{{ photo.class_name }}</p>
                 <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
+                <p class="photo-activity" v-if="photo.activity">
+                  <el-icon><Location /></el-icon>
+                  {{ photo.activity }}
+                </p>
                 <div class="overlay-actions">
                   <el-button 
                     type="primary" 
@@ -178,13 +186,13 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Grid, Picture, User } from '@element-plus/icons-vue';
+import { Grid, Picture, User, Location } from '@element-plus/icons-vue';
 import axios from 'axios';
 
 export default {
   name: 'PublicPhotos',
   components: {
-    Grid, Picture, User
+    Grid, Picture, User, Location
   },
   setup() {
     const loading = ref(false);
@@ -415,6 +423,16 @@ export default {
   color: #909399;
   font-size: 12px;
   margin: 0 0 5px 0;
+}
+
+.photo-activity {
+  color: #E6A23C;
+  font-size: 12px;
+  margin: 0 0 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
 }
 
 .photo-children {

@@ -28,7 +28,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/students', authenticateToken, async (req, res) => {
   try {
     const [students] = await pool.execute(`
-      SELECT c.id, c.name, c.class_id, c.created_at,
+      SELECT c.id, c.name, c.student_number, c.class_id, c.created_at,
              cl.name as class_name
       FROM children c
       LEFT JOIN classes cl ON c.class_id = cl.id
@@ -45,10 +45,10 @@ router.get('/students', authenticateToken, async (req, res) => {
 // 添加学生（教师可用）
 router.post('/students', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
   try {
-    const { name, class_id } = req.body;
+    const { name, student_number, class_id } = req.body;
 
-    if (!name || !class_id) {
-      return res.status(400).json({ error: '学生姓名和班级ID不能为空' });
+    if (!name || !student_number || !class_id) {
+      return res.status(400).json({ error: '学生姓名、学号和班级ID不能为空' });
     }
 
     // 检查班级是否存在
@@ -61,7 +61,17 @@ router.post('/students', authenticateToken, authorizeRole(['teacher']), async (r
       return res.status(404).json({ error: '班级不存在' });
     }
 
-    // 检查学生是否已存在
+    // 检查学号是否已存在
+    const [existingStudentNumber] = await pool.execute(
+      'SELECT id FROM children WHERE student_number = ?',
+      [student_number]
+    );
+
+    if (existingStudentNumber.length > 0) {
+      return res.status(400).json({ error: '该学号已存在' });
+    }
+
+    // 检查学生是否已存在（同名同班级）
     const [existingChild] = await pool.execute(
       'SELECT id FROM children WHERE name = ? AND class_id = ?',
       [name, class_id]
@@ -73,8 +83,8 @@ router.post('/students', authenticateToken, authorizeRole(['teacher']), async (r
 
     // 添加学生
     const [result] = await pool.execute(
-      'INSERT INTO children (name, class_id) VALUES (?, ?)',
-      [name, class_id]
+      'INSERT INTO children (name, student_number, class_id) VALUES (?, ?, ?)',
+      [name, student_number, class_id]
     );
 
     res.status(201).json({
@@ -82,6 +92,7 @@ router.post('/students', authenticateToken, authorizeRole(['teacher']), async (r
       child: {
         id: result.insertId,
         name,
+        student_number,
         class_id
       }
     });
@@ -95,10 +106,10 @@ router.post('/students', authenticateToken, authorizeRole(['teacher']), async (r
 router.put('/students/:id', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
   try {
     const studentId = req.params.id;
-    const { name, class_id } = req.body;
+    const { name, student_number, class_id } = req.body;
 
-    if (!name || !class_id) {
-      return res.status(400).json({ error: '学生姓名和班级ID不能为空' });
+    if (!name || !student_number || !class_id) {
+      return res.status(400).json({ error: '学生姓名、学号和班级ID不能为空' });
     }
 
     // 检查学生是否存在
@@ -109,6 +120,16 @@ router.put('/students/:id', authenticateToken, authorizeRole(['teacher']), async
 
     if (existingStudent.length === 0) {
       return res.status(404).json({ error: '学生不存在' });
+    }
+
+    // 检查学号是否已存在（排除当前学生）
+    const [existingStudentNumber] = await pool.execute(
+      'SELECT id FROM children WHERE student_number = ? AND id != ?',
+      [student_number, studentId]
+    );
+
+    if (existingStudentNumber.length > 0) {
+      return res.status(400).json({ error: '该学号已存在' });
     }
 
     // 检查班级是否存在
@@ -123,8 +144,8 @@ router.put('/students/:id', authenticateToken, authorizeRole(['teacher']), async
 
     // 更新学生信息
     await pool.execute(
-      'UPDATE children SET name = ?, class_id = ? WHERE id = ?',
-      [name, class_id, studentId]
+      'UPDATE children SET name = ?, student_number = ?, class_id = ? WHERE id = ?',
+      [name, student_number, class_id, studentId]
     );
 
     res.json({ message: '学生信息更新成功' });
@@ -180,7 +201,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     // 获取班级学生
     const [students] = await pool.execute(`
-      SELECT id, name, created_at
+      SELECT id, name, student_number, created_at
       FROM children
       WHERE class_id = ?
       ORDER BY name
@@ -216,7 +237,7 @@ router.get('/:id/children', authenticateToken, async (req, res) => {
     }
 
     const [children] = await pool.execute(`
-      SELECT id, name, created_at
+      SELECT id, name, student_number, created_at
       FROM children
       WHERE class_id = ?
       ORDER BY name
@@ -273,16 +294,26 @@ router.post('/', authenticateToken, authorizeRole(['teacher']), async (req, res)
 router.post('/:id/children', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
   try {
     const classId = req.params.id;
-    const { name } = req.body;
+    const { name, student_number } = req.body;
     const teacherId = req.user.id;
 
-    if (!name) {
-      return res.status(400).json({ error: '学生姓名不能为空' });
+    if (!name || !student_number) {
+      return res.status(400).json({ error: '学生姓名和学号不能为空' });
     }
 
     // 权限检查：教师只能向自己的班级添加学生
     if (req.user.class_id != classId) {
       return res.status(403).json({ error: '无权向该班级添加学生' });
+    }
+
+    // 检查学号是否已存在
+    const [existingStudentNumber] = await pool.execute(
+      'SELECT id FROM children WHERE student_number = ?',
+      [student_number]
+    );
+
+    if (existingStudentNumber.length > 0) {
+      return res.status(400).json({ error: '该学号已存在' });
     }
 
     // 检查学生是否已存在
@@ -297,8 +328,8 @@ router.post('/:id/children', authenticateToken, authorizeRole(['teacher']), asyn
 
     // 添加学生
     const [result] = await pool.execute(
-      'INSERT INTO children (name, class_id) VALUES (?, ?)',
-      [name, classId]
+      'INSERT INTO children (name, student_number, class_id) VALUES (?, ?, ?)',
+      [name, student_number, classId]
     );
 
     res.status(201).json({
@@ -306,6 +337,7 @@ router.post('/:id/children', authenticateToken, authorizeRole(['teacher']), asyn
       child: {
         id: result.insertId,
         name,
+        student_number,
         class_id: classId
       }
     });

@@ -69,6 +69,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'parent' }
   },
   {
+    path: '/parent/binding',
+    name: 'ParentBinding',
+    component: () => import('../views/parent/ChildBinding.vue'),
+    meta: { requiresAuth: true, role: 'parent' }
+  },
+  {
     path: '/parent/public',
     name: 'ParentPublic',
     component: () => import('../views/parent/PublicPhotos.vue'),

@@ -19,6 +19,7 @@
       <el-table :data="students" v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="姓名" width="120" />
+        <el-table-column prop="student_number" label="学号" width="120" />
         <el-table-column prop="class_name" label="班级" width="120" />
         <el-table-column prop="created_at" label="入学时间" width="180">
           <template #default="scope">
@@ -77,6 +78,10 @@
           <el-input v-model="studentFormData.name" />
         </el-form-item>
         
+        <el-form-item label="学号" prop="studentNumber">
+          <el-input v-model="studentFormData.studentNumber" placeholder="请输入学号" />
+        </el-form-item>
+        
         <el-form-item label="班级" prop="classId">
           <el-select v-model="studentFormData.classId" placeholder="请选择班级">
             <el-option 
@@ -125,6 +130,7 @@ export default {
     
     const studentFormData = reactive({
       name: '',
+      studentNumber: '',
       classId: null
     });
     
@@ -132,6 +138,10 @@ export default {
       name: [
         { required: true, message: '请输入学生姓名', trigger: 'blur' },
         { min: 2, max: 10, message: '姓名长度在 2 到 10 个字符', trigger: 'blur' }
+      ],
+      studentNumber: [
+        { required: true, message: '请输入学号', trigger: 'blur' },
+        { min: 1, max: 20, message: '学号长度在 1 到 20 个字符', trigger: 'blur' }
       ],
       classId: [
         { required: true, message: '请选择班级', trigger: 'change' }
@@ -168,6 +178,7 @@ export default {
       editingStudent.value = student;
       Object.assign(studentFormData, {
         name: student.name,
+        studentNumber: student.student_number || '',
         classId: student.class_id
       });
       showAddDialog.value = true;
@@ -206,6 +217,7 @@ export default {
           // 编辑
           await axios.put(`/classes/students/${editingStudent.value.id}`, {
             name: studentFormData.name,
+            student_number: studentFormData.studentNumber,
             class_id: studentFormData.classId
           });
           ElMessage.success('编辑成功');
@@ -213,6 +225,7 @@ export default {
           // 添加
           await axios.post('/classes/students', {
             name: studentFormData.name,
+            student_number: studentFormData.studentNumber,
             class_id: studentFormData.classId
           });
           ElMessage.success('添加成功');
@@ -232,6 +245,7 @@ export default {
       editingStudent.value = null;
       Object.assign(studentFormData, {
         name: '',
+        studentNumber: '',
         classId: null
       });
       studentForm.value?.resetFields();

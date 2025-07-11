@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const photoRoutes = require('./routes/photos');
 const classRoutes = require('./routes/classes');
 const userRoutes = require('./routes/users');
+const mockFaceRecognitionRoutes = require('./routes/mockFaceRecognition');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/mock-face-recognition', mockFaceRecognitionRoutes);
 
 // 健康检查
 app.get('/api/health', (req, res) => {

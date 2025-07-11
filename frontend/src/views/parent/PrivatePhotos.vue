@@ -72,6 +72,10 @@
           <div class="photo-overlay">
             <div class="photo-info">
               <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
+              <p class="photo-activity" v-if="photo.activity">
+                <el-icon><Location /></el-icon>
+                {{ photo.activity }}
+              </p>
               <p class="photo-children">
                 <el-icon><User /></el-icon>
                 {{ getChildrenNames(photo.recognition_data) }}
@@ -108,6 +112,16 @@
         <el-table-column label="识别的学生">
           <template #default="scope">
             {{ getChildrenNames(scope.row.recognition_data) }}
+          </template>
+        </el-table-column>
+        
+        <el-table-column label="活动场景" width="120">
+          <template #default="scope">
+            <span v-if="scope.row.activity" class="activity-tag">
+              <el-icon><Location /></el-icon>
+              {{ scope.row.activity }}
+            </span>
+            <span v-else class="no-activity">-</span>
           </template>
         </el-table-column>
         
@@ -151,13 +165,13 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Grid, List, Picture, User } from '@element-plus/icons-vue';
+import { Grid, List, Picture, User, Location } from '@element-plus/icons-vue';
 import axios from 'axios';
 
 export default {
   name: 'PrivatePhotos',
   components: {
-    Grid, List, Picture, User
+    Grid, List, Picture, User, Location
   },
   setup() {
     const loading = ref(false);
@@ -358,6 +372,17 @@ export default {
   margin: 0 0 5px 0;
 }
 
+.photo-activity {
+  font-size: 12px;
+  opacity: 0.9;
+  margin: 0 0 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #E6A23C;
+  font-weight: 500;
+}
+
 .photo-children {
   font-size: 14px;
   margin: 0;
@@ -381,5 +406,23 @@ export default {
   background: var(--el-fill-color-light);
   color: var(--el-text-color-secondary);
   font-size: 24px;
+}
+
+.activity-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #FDF6EC;
+  color: #E6A23C;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #F5DAB1;
+}
+
+.no-activity {
+  color: #909399;
+  font-size: 12px;
 }
 </style> 

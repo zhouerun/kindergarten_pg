@@ -40,7 +40,7 @@
             {{ formatDate(scope.row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200">
+        <el-table-column label="操作" width="120">
           <template #default="scope">
             <el-button 
               type="primary" 
@@ -48,13 +48,6 @@
               @click="editParent(scope.row)"
             >
               编辑
-            </el-button>
-            <el-button 
-              type="info" 
-              size="small" 
-              @click="manageChildren(scope.row)"
-            >
-              管理关联
             </el-button>
           </template>
         </el-table-column>
@@ -101,47 +94,7 @@
         </el-button>
       </template>
     </el-dialog>
-    
-    <!-- 管理关联对话框 -->
-    <el-dialog 
-      v-model="showChildrenDialog" 
-      title="管理学生关联"
-      width="500px"
-    >
-      <div v-if="selectedParent">
-        <h4>家长：{{ selectedParent.full_name }}</h4>
-        <el-divider />
-        
-        <el-form label-width="100px">
-          <el-form-item label="关联学生">
-            <el-select 
-              v-model="selectedChildrenIds" 
-              multiple 
-              placeholder="请选择学生"
-              style="width: 100%"
-            >
-              <el-option 
-                v-for="student in students" 
-                :key="student.id" 
-                :label="student.name" 
-                :value="student.id"
-              />
-            </el-select>
-          </el-form-item>
-        </el-form>
-      </div>
-      
-      <template #footer>
-        <el-button @click="showChildrenDialog = false">取消</el-button>
-        <el-button 
-          type="primary" 
-          @click="saveChildrenRelation" 
-          :loading="saving"
-        >
-          保存关联
-        </el-button>
-      </template>
-    </el-dialog>
+
   </div>
 </template>
 
@@ -160,13 +113,9 @@ export default {
     const loading = ref(false);
     const saving = ref(false);
     const showAddDialog = ref(false);
-    const showChildrenDialog = ref(false);
     const editingParent = ref(null);
-    const selectedParent = ref(null);
     const parentForm = ref(null);
     const parents = ref([]);
-    const students = ref([]);
-    const selectedChildrenIds = ref([]);
     
     const parentFormData = reactive({
       username: '',
@@ -206,14 +155,7 @@ export default {
       }
     };
     
-    const loadStudents = async () => {
-      try {
-        const response = await axios.get('/classes/students');
-        students.value = response.data;
-      } catch (error) {
-        ElMessage.error('加载学生列表失败');
-      }
-    };
+
     
     const editParent = (parent) => {
       editingParent.value = parent;
@@ -225,11 +167,7 @@ export default {
       showAddDialog.value = true;
     };
     
-    const manageChildren = async (parent) => {
-      selectedParent.value = parent;
-      selectedChildrenIds.value = parent.children ? parent.children.map(c => c.id) : [];
-      showChildrenDialog.value = true;
-    };
+
     
     const saveParent = async () => {
       try {
@@ -268,26 +206,7 @@ export default {
       }
     };
     
-    const saveChildrenRelation = async () => {
-      try {
-        saving.value = true;
-        console.log('=== 关联家长和孩子请求开始 ===');
-        console.log('用户信息:', selectedParent.value);
-        console.log('请求体:', selectedChildrenIds.value);
-        
-        await axios.put(`/users/${selectedParent.value.id}/children`, {
-          children: selectedChildrenIds.value
-        });
-        
-        ElMessage.success('关联关系保存成功');
-        showChildrenDialog.value = false;
-        loadParents();
-      } catch (error) {
-        ElMessage.error(error.response?.data?.message || '保存失败');
-      } finally {
-        saving.value = false;
-      }
-    };
+
     
     const resetForm = () => {
       editingParent.value = null;
@@ -301,27 +220,20 @@ export default {
     
     onMounted(() => {
       loadParents();
-      loadStudents();
     });
     
     return {
       loading,
       saving,
       showAddDialog,
-      showChildrenDialog,
       editingParent,
-      selectedParent,
       parentForm,
       parents,
-      students,
-      selectedChildrenIds,
       parentFormData,
       parentRules,
       formatDate,
       editParent,
-      manageChildren,
       saveParent,
-      saveChildrenRelation,
       resetForm
     };
   }

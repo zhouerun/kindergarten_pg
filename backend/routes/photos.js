@@ -28,11 +28,11 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/bmp', 'image/tiff', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('只允许上传 JPEG、PNG、GIF 格式的图片'), false);
+      cb(new Error('只允许上传 JPG、JPEG、PNG、BMP、TIFF、WEBP 格式的图片'), false);
     }
   }
 });
@@ -86,10 +86,10 @@ router.post('/', authenticateToken, authorizeRole(['teacher']), upload.array('im
   console.log('文件信息:', req.files);
   
   try {
-    const { classId, isPublic = true } = req.body;
+    const { classId, isPublic = true, activity = null } = req.body;
     const uploaderId = req.user.id;
     
-    console.log('解析参数:', { classId, isPublic, uploaderId });
+    console.log('解析参数:', { classId, isPublic, activity, uploaderId });
     
     if (!req.files || req.files.length === 0) {
       console.log('错误：没有文件');
@@ -112,20 +112,41 @@ router.post('/', authenticateToken, authorizeRole(['teacher']), upload.array('im
       // 保存照片记录到数据库
       console.log('准备插入数据库');
       const [result] = await pool.execute(
-        'INSERT INTO photos (path, uploader_id, class_id, is_public, recognition_data) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO photos (path, uploader_id, class_id, is_public, activity, recognition_data) VALUES (?, ?, ?, ?, ?, ?)',
         [
           `/uploads/${file.filename}`,
           uploaderId,
           classId,
           isPublic,
+          activity,
           JSON.stringify(recognitionData)
         ]
       );
       
-      console.log('数据库插入成功，ID:', result.insertId);
+      const photoId = result.insertId;
+      console.log('数据库插入成功，ID:', photoId);
+      
+      // 插入照片-孩子关联记录
+      if (recognitionData.child_ids && recognitionData.child_ids.length > 0) {
+        console.log('准备插入photo_child关联记录，child_ids:', recognitionData.child_ids);
+        
+        // 循环插入photo_child记录
+        for (const childId of recognitionData.child_ids) {
+          try {
+            await pool.execute(
+              'INSERT INTO photo_child (photo_id, child_id) VALUES (?, ?)',
+              [photoId, childId]
+            );
+            console.log(`成功插入photo_child关联记录: photo_id=${photoId}, child_id=${childId}`);
+          } catch (photoChildError) {
+            console.error(`插入photo_child关联记录失败 (photo_id=${photoId}, child_id=${childId}):`, photoChildError);
+            // 这里不抛出错误，因为照片本身已经保存成功，继续处理其他关联
+          }
+        }
+      }
       
       uploadedPhotos.push({
-        id: result.insertId,
+        id: photoId,
         path: `/uploads/${file.filename}`,
         recognition_data: recognitionData
       });
@@ -163,7 +184,7 @@ router.get('/public', authenticateToken, async (req, res) => {
     
     // 从数据库获取公共照片
     const [photos] = await pool.execute(`
-      SELECT p.id, p.path, p.created_at, u.full_name as uploader_name,
+      SELECT p.id, p.path, p.created_at, p.activity, u.full_name as uploader_name,
              c.name as class_name, p.recognition_data,
              (SELECT COUNT(*) FROM likes l WHERE l.photo_id = p.id) as like_count
       FROM photos p
@@ -244,13 +265,7 @@ router.get('/private', authenticateToken, authorizeRole(['parent']), async (req,
     const offset = (pageNum - 1) * limitNum;
     const parentId = req.user.id;
     
-    console.log('请求参数:', { page, limit, pageNum, limitNum, offset, parentId });
-    console.log('参数类型:', { 
-      limitNumType: typeof limitNum, 
-      offsetType: typeof offset,
-      limitNumIsNaN: Number.isNaN(limitNum),
-      offsetIsNaN: Number.isNaN(offset)
-    });
+    console.log('获取家长私有照片请求 - 参数:', { page, limit, pageNum, limitNum, offset, parentId });
     
     // 确保参数是有效的正整数
     if (Number.isNaN(limitNum) || limitNum <= 0) {
@@ -260,88 +275,59 @@ router.get('/private', authenticateToken, authorizeRole(['parent']), async (req,
       return res.status(400).json({ error: 'Invalid offset parameter' });
     }
     
-    // 获取家长的孩子ID
+    // 第1步：获取家长的孩子ID
     const [children] = await pool.execute(
       'SELECT child_id FROM parent_child WHERE parent_id = ?',
       [parentId]
     );
     
     if (children.length === 0) {
-      return res.json({ photos: [], pagination: { page: pageNum, limit: limitNum, total: 0 } });
+      console.log('家长没有关联的孩子，返回空结果');
+      return res.json({ 
+        photos: [], 
+        pagination: { page: pageNum, limit: limitNum, total: 0 } 
+      });
     }
-    console.log('children', children);
+    
     const childIds = children.map(child => child.child_id);
+    console.log('家长关联的孩子ID:', childIds);
     
-    console.log('SQL参数:', [limitNum, offset]);
+    // 第2步：从photo_child表获取这些孩子对应的photo_id
+    const childIdsPlaceholder = childIds.map(() => '?').join(',');
+    const [photoChildren] = await pool.execute(
+      `SELECT DISTINCT photo_id FROM photo_child WHERE child_id IN (${childIdsPlaceholder})`,
+      childIds
+    );
     
-    // 从数据库获取照片数据
-    // 使用简化的SQL查询避免复杂的聚合
-    let photos;
-    try {
-      const [result] = await pool.execute(`
-        SELECT p.id, p.path, p.created_at, u.full_name as uploader_name,
-               c.name as class_name, p.recognition_data,
-               (SELECT COUNT(*) FROM likes l WHERE l.photo_id = p.id) as like_count
-        FROM photos p
-        LEFT JOIN users u ON p.uploader_id = u.id
-        LEFT JOIN classes c ON p.class_id = c.id
-        WHERE p.recognition_data IS NOT NULL
-        ORDER BY p.created_at DESC
-        LIMIT ${limitNum} OFFSET ${offset}
-      `);
-      
-      photos = result;
-      console.log('从数据库获取到的照片:', photos.length, '张');
-      
-      // 如果数据库中没有照片，直接返回空结果
-      if (photos.length === 0) {
-        console.log('数据库中没有照片，返回空结果');
-        return res.json({ 
-          photos: [], 
-          pagination: { 
-            page: pageNum, 
-            limit: limitNum, 
-            total: 0 
-          } 
-        });
-      }
-      
-    } catch (sqlError) {
-      console.error('数据库查询错误:', sqlError);
-      throw new Error('数据库查询照片失败: ' + sqlError.message);
+    if (photoChildren.length === 0) {
+      console.log('没有找到孩子对应的照片，返回空结果');
+      return res.json({ 
+        photos: [], 
+        pagination: { page: pageNum, limit: limitNum, total: 0 } 
+      });
     }
     
-    // 在代码中过滤包含家长孩子的照片
-    const filteredPhotos = photos.filter(photo => {
-      if (!photo.recognition_data) return false;
-      
-      try {
-        // 检查recognition_data是否已经是对象还是需要解析的字符串
-        let recognitionData;
-        if (typeof photo.recognition_data === 'string') {
-          recognitionData = JSON.parse(photo.recognition_data);
-        } else if (typeof photo.recognition_data === 'object') {
-          recognitionData = photo.recognition_data;
-        } else {
-          console.log('未知的recognition_data类型:', typeof photo.recognition_data, photo.recognition_data);
-          return false;
-        }
-        
-        const photoChildIds = recognitionData.child_ids || [];
-        console.log(`照片${photo.id}的孩子IDs:`, photoChildIds, '家长的孩子IDs:', childIds);
-        
-        // 检查是否有任何一个孩子ID匹配
-        return photoChildIds.some(childId => childIds.includes(childId));
-      } catch (error) {
-        console.error('解析识别数据错误:', error);
-        console.error('数据内容:', photo.recognition_data);
-        console.error('数据类型:', typeof photo.recognition_data);
-        return false;
-      }
-    });
-
+    const photoIds = photoChildren.map(pc => pc.photo_id);
+    console.log('找到的照片ID:', photoIds);
+    
+    // 第3步：从photos表获取这些photo_id对应的照片信息
+    const photoIdsPlaceholder = photoIds.map(() => '?').join(',');
+    const [photos] = await pool.execute(`
+      SELECT p.id, p.path, p.created_at, p.activity, u.full_name as uploader_name,
+             c.name as class_name, p.recognition_data,
+             (SELECT COUNT(*) FROM likes l WHERE l.photo_id = p.id) as like_count
+      FROM photos p
+      LEFT JOIN users u ON p.uploader_id = u.id
+      LEFT JOIN classes c ON p.class_id = c.id
+      WHERE p.id IN (${photoIdsPlaceholder})
+      ORDER BY p.created_at DESC
+      LIMIT ${limitNum} OFFSET ${offset}
+    `, photoIds);
+    
+    console.log('从photos表获取到的照片数量:', photos.length);
+    
     // 为每张照片添加识别到的孩子信息（从数据库获取）
-    for (let photo of filteredPhotos) {
+    for (let photo of photos) {
       if (photo.recognition_data) {
         try {
           // 检查recognition_data是否已经是对象还是需要解析的字符串
@@ -376,15 +362,25 @@ router.get('/private', authenticateToken, authorizeRole(['parent']), async (req,
         photo.children = [];
       }
     }
-
-    res.json({
-      photos: filteredPhotos,
+    
+    // 获取总数（用于分页）
+    const [totalResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM photos WHERE id IN (${photoIdsPlaceholder})`,
+      photoIds
+    );
+    const total = totalResult[0].total;
+    
+    const response = {
+      photos,
       pagination: {
         page: pageNum,
         limit: limitNum,
-        total: filteredPhotos.length
+        total: total
       }
-    });
+    };
+    
+    console.log('返回的响应 - 照片数量:', response.photos.length, '总数:', total);
+    res.json(response);
   } catch (error) {
     console.error('获取私有照片错误:', error);
     console.error('错误详情:', error.message);

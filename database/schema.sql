@@ -43,12 +43,20 @@ CREATE TABLE photos (
   uploader_id INT NOT NULL,
   class_id INT NOT NULL,
   is_public tinyint(1) DEFAULT 1,
-  recognition_data JSON DEFAULT NULL,
+  activity_id TEXT DEFAULT NULL,
+  --recognition_data JSON DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (uploader_id) REFERENCES users(id),
   FOREIGN KEY (class_id) REFERENCES classes(id)
 );
-
+--照片孩子关联表
+CREATE TABLE photo_child (
+  photo_id INT NOT NULL,
+  child_id INT NOT NULL,
+  PRIMARY KEY (photo_id, child_id),
+  FOREIGN KEY (photo_id) REFERENCES photos(id),
+  FOREIGN KEY (child_id) REFERENCES children(id)
+);  
 -- 家长-孩子关联表
 CREATE TABLE parent_child (
   parent_id INT NOT NULL,

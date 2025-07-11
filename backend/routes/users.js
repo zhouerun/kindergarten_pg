@@ -174,176 +174,94 @@ router.get('/children', authenticateToken, authorizeRole(['parent']), async (req
   }
 });
 
-// 关联家长和孩子
-router.post('/parent-child', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
+// 家长绑定孩子（家长专用）
+router.post('/bind-child', authenticateToken, authorizeRole(['parent']), async (req, res) => {
   try {
-    console.log('=== 关联家长和孩子请求开始 ===');
+    console.log('=== 家长绑定孩子请求开始 ===');
     console.log('用户信息:', req.user);
     console.log('请求体:', req.body);
     
-    const { parentId, childId } = req.body;
+    const parentId = req.user.id;
+    const { studentNumber } = req.body;
 
-    if (!parentId || !childId) {
-      return res.status(400).json({ error: '家长ID和孩子ID不能为空' });
+    if (!studentNumber) {
+      return res.status(400).json({ error: '学号不能为空' });
     }
 
-    // 检查家长是否存在
-    const [parent] = await pool.execute(
-      'SELECT id FROM users WHERE id = ? AND role = "parent"',
-      [parentId]
-    );
-
-    if (parent.length === 0) {
-      return res.status(404).json({ error: '家长不存在' });
-    }
-
-    // 检查孩子是否存在
+    // 检查孩子是否存在（通过学号查找）
     const [child] = await pool.execute(
-      'SELECT id FROM children WHERE id = ?',
-      [childId]
+      'SELECT id, name, student_number FROM children WHERE student_number = ?',
+      [studentNumber]
     );
 
     if (child.length === 0) {
-      return res.status(404).json({ error: '孩子不存在' });
+      return res.status(404).json({ error: '学号有误，请检查学号是否正确' });
     }
 
-    // 检查是否已经关联
+    const childId = child[0].id;
+
+    // 检查是否已经绑定
     const [existing] = await pool.execute(
       'SELECT * FROM parent_child WHERE parent_id = ? AND child_id = ?',
       [parentId, childId]
     );
 
     if (existing.length > 0) {
-      return res.status(400).json({ error: '家长和孩子已经关联' });
+      return res.status(400).json({ error: '您已经绑定了这个孩子' });
     }
 
-    // 创建关联
+    // 创建绑定关系
     await pool.execute(
       'INSERT INTO parent_child (parent_id, child_id) VALUES (?, ?)',
       [parentId, childId]
     );
 
-    res.json({ message: '家长和孩子关联成功' });
+    console.log(`家长 ${parentId} 成功绑定孩子 ${childId} (学号: ${studentNumber})`);
+    res.json({ 
+      message: '绑定成功',
+      child: child[0]
+    });
   } catch (error) {
-    console.error('关联家长和孩子错误:', error);
-    res.status(500).json({ error: '关联失败' });
+    console.error('家长绑定孩子错误:', error);
+    res.status(500).json({ error: '绑定失败: ' + error.message });
   }
 });
 
-// 取消家长和孩子的关联
-router.delete('/parent-child', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
+// 家长解绑孩子（家长专用）
+router.delete('/bind-child', authenticateToken, authorizeRole(['parent']), async (req, res) => {
   try {
-    const { parentId, childId } = req.body;
+    console.log('=== 家长解绑孩子请求开始 ===');
+    console.log('用户信息:', req.user);
+    console.log('请求体:', req.body);
+    
+    const parentId = req.user.id;
+    const { childId } = req.body;
 
-    if (!parentId || !childId) {
-      return res.status(400).json({ error: '家长ID和孩子ID不能为空' });
+    if (!childId) {
+      return res.status(400).json({ error: '学生ID不能为空' });
     }
 
-    // 检查关联是否存在
+    // 检查绑定关系是否存在
     const [existing] = await pool.execute(
       'SELECT * FROM parent_child WHERE parent_id = ? AND child_id = ?',
       [parentId, childId]
     );
 
     if (existing.length === 0) {
-      return res.status(404).json({ error: '关联不存在' });
+      return res.status(404).json({ error: '绑定关系不存在' });
     }
 
-    // 删除关联
+    // 删除绑定关系
     await pool.execute(
       'DELETE FROM parent_child WHERE parent_id = ? AND child_id = ?',
       [parentId, childId]
     );
 
-    res.json({ message: '取消关联成功' });
+    console.log(`家长 ${parentId} 成功解绑孩子 ${childId}`);
+    res.json({ message: '解绑成功' });
   } catch (error) {
-    console.error('取消关联错误:', error);
-    res.status(500).json({ error: '取消关联失败' });
-  }
-});
-
-// 批量更新家长和孩子的关联关系
-router.put('/:id/children', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
-  try {
-    console.log('=== 批量更新家长和孩子关联关系请求开始 ===');
-    console.log('用户信息:', req.user);
-    console.log('家长ID:', req.params.id);
-    console.log('请求体:', req.body);
-    
-    const parentId = req.params.id;
-    const { children } = req.body;
-
-    if (!parentId) {
-      return res.status(400).json({ error: '家长ID不能为空' });
-    }
-
-    if (!Array.isArray(children)) {
-      return res.status(400).json({ error: '孩子列表必须是数组' });
-    }
-
-    // 检查家长是否存在
-    const [parent] = await pool.execute(
-      'SELECT id FROM users WHERE id = ? AND role = "parent"',
-      [parentId]
-    );
-
-    if (parent.length === 0) {
-      return res.status(404).json({ error: '家长不存在' });
-    }
-
-    // 检查所有孩子是否存在
-    if (children.length > 0) {
-      const placeholders = children.map(() => '?').join(',');
-      const [existingChildren] = await pool.execute(
-        `SELECT id FROM children WHERE id IN (${placeholders})`,
-        children
-      );
-
-      if (existingChildren.length !== children.length) {
-        return res.status(400).json({ error: '部分孩子不存在' });
-      }
-    }
-
-    // 获取连接并开始事务
-    const connection = await pool.getConnection();
-    
-    try {
-      await connection.beginTransaction();
-
-      // 删除该家长的所有现有关联
-      await connection.execute(
-        'DELETE FROM parent_child WHERE parent_id = ?',
-        [parentId]
-      );
-
-      // 添加新的关联
-      if (children.length > 0) {
-        const values = children.map(childId => [parentId, childId]);
-        const placeholders = values.map(() => '(?, ?)').join(',');
-        const flatValues = values.flat();
-        
-        await connection.execute(
-          `INSERT INTO parent_child (parent_id, child_id) VALUES ${placeholders}`,
-          flatValues
-        );
-      }
-
-      // 提交事务
-      await connection.commit();
-
-      console.log('家长和孩子关联关系更新成功');
-      res.json({ message: '关联关系更新成功' });
-    } catch (error) {
-      // 回滚事务
-      await connection.rollback();
-      throw error;
-    } finally {
-      // 释放连接
-      connection.release();
-    }
-  } catch (error) {
-    console.error('批量更新家长和孩子关联关系错误:', error);
-    res.status(500).json({ error: '更新关联关系失败: ' + error.message });
+    console.error('家长解绑孩子错误:', error);
+    res.status(500).json({ error: '解绑失败: ' + error.message });
   }
 });
 
