@@ -129,6 +129,16 @@
               </el-button>
               
               <el-button 
+                type="warning" 
+                size="large" 
+                @click="$router.push('/teacher/photos')"
+                class="action-btn"
+              >
+                <el-icon><Picture /></el-icon>
+                照片管理
+              </el-button>
+              
+              <el-button 
                 type="success" 
                 size="large" 
                 @click="$router.push('/teacher/class')"

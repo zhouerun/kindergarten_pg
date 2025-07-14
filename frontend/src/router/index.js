@@ -55,6 +55,12 @@ const routes = [
     component: () => import('../views/teacher/UserManagement.vue'),
     meta: { requiresAuth: true, role: 'teacher' }
   },
+  {
+    path: '/teacher/photos',
+    name: 'TeacherPhotos',
+    component: () => import('../views/teacher/PhotoManagement.vue'),
+    meta: { requiresAuth: true, role: 'teacher' }
+  },
   // 家长端路由
   {
     path: '/parent',
@@ -65,9 +71,10 @@ const routes = [
   {
     path: '/parent/photos',
     name: 'ParentPhotos',
-    component: () => import('../views/parent/PrivatePhotos.vue'),
+    component: () => import('../views/parent/PhotoAlbums.vue'),
     meta: { requiresAuth: true, role: 'parent' }
   },
+
   {
     path: '/parent/binding',
     name: 'ParentBinding',
@@ -80,6 +87,7 @@ const routes = [
     component: () => import('../views/parent/PublicPhotos.vue'),
     meta: { requiresAuth: true, role: 'parent' }
   },
+
   // 404页面
   {
     path: '/:pathMatch(.*)*',

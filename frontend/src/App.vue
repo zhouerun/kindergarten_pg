@@ -41,6 +41,10 @@
                 <el-icon><Upload /></el-icon>
                 <span>上传照片</span>
               </el-menu-item>
+              <el-menu-item index="/teacher/photos">
+                <el-icon><Picture /></el-icon>
+                <span>照片管理</span>
+              </el-menu-item>
               <el-menu-item index="/teacher/class">
                 <el-icon><School /></el-icon>
                 <span>班级管理</span>
@@ -62,11 +66,11 @@
               </el-menu-item>
               <el-menu-item index="/parent/photos">
                 <el-icon><Picture /></el-icon>
-                <span>我的照片</span>
+                <span>孩子照片</span>
               </el-menu-item>
               <el-menu-item index="/parent/public">
                 <el-icon><Camera /></el-icon>
-                <span>公共照片</span>
+                <span>班级照片墙</span>
               </el-menu-item>
             </template>
           </el-menu>

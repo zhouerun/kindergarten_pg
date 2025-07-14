@@ -5,231 +5,225 @@
       <p>浏览班级的公共照片</p>
     </div>
     
-    <!-- 筛选栏 -->
+    <!-- 控制栏 -->
     <el-card style="margin-bottom: 20px;">
-      <el-form :model="filterForm" :inline="true">
-        <el-form-item label="班级">
-          <el-select v-model="filterForm.classId" placeholder="选择班级" @change="loadPhotos">
-            <el-option label="全部班级" :value="''" />
-            <el-option 
-              v-for="cls in classes" 
-              :key="cls.id" 
-              :label="cls.name" 
-              :value="cls.id"
-            />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="时间范围">
-          <el-date-picker
-            v-model="filterForm.dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            @change="loadPhotos"
-          />
-        </el-form-item>
-        
-        <el-form-item>
-          <el-input 
-            v-model="filterForm.query" 
-            placeholder="搜索照片..."
-            style="width: 200px;"
-            @keyup.enter="loadPhotos"
-          />
-        </el-form-item>
-        
-        <el-form-item>
-          <el-button type="primary" @click="loadPhotos">搜索</el-button>
-          <el-button @click="resetFilter">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-    
-    <!-- 照片网格 -->
-    <el-card v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>班级照片 ({{ total }})</span>
+      <div class="controls">
+        <div class="group-controls">
           <el-button-group>
             <el-button 
-              :type="viewMode === 'grid' ? 'primary' : 'default'"
-              @click="viewMode = 'grid'"
+              :type="groupBy === 'month' ? 'primary' : 'default'"
+              @click="changeGroupBy('month')"
             >
-              <el-icon><Grid /></el-icon>
-              网格视图
+              <el-icon><Calendar /></el-icon>
+              按月分组
             </el-button>
             <el-button 
-              :type="viewMode === 'waterfall' ? 'primary' : 'default'"
-              @click="viewMode = 'waterfall'"
+              :type="groupBy === 'week' ? 'primary' : 'default'"
+              @click="changeGroupBy('week')"
             >
-              <el-icon><Picture /></el-icon>
-              瀑布流
+              <el-icon><Clock /></el-icon>
+              按周分组
+            </el-button>
+            <el-button 
+              :type="groupBy === 'day' ? 'primary' : 'default'"
+              @click="changeGroupBy('day')"
+            >
+              <el-icon><Sunrise /></el-icon>
+              按日分组
             </el-button>
           </el-button-group>
         </div>
-      </template>
+      </div>
+    </el-card>
+    
+    <!-- 集合视图 -->
+    <div v-loading="albumsLoading" class="albums-container">
+      <div v-if="albums.length === 0 && !albumsLoading" class="empty-state">
+        <el-empty description="暂无照片集" />
+      </div>
       
-      <!-- 网格视图 -->
-      <div v-if="viewMode === 'grid'" class="photo-grid">
+      <div v-else>
         <div 
-          v-for="photo in photos" 
-          :key="photo.id" 
-          class="photo-card"
+          v-for="album in albums" 
+          :key="album.class.id"
+          class="class-album"
         >
-          <el-image 
-            :src="photo.path" 
-            :preview-src-list="photos.map(p => p.path)"
-            :initial-index="photos.findIndex(p => p.id === photo.id)"
-            fit="cover"
-            class="photo-image"
-          >
-            <template #error>
-              <div class="image-slot">
-                <el-icon><Picture /></el-icon>
+          <div class="class-header">
+            <div class="class-info">
+              <div class="class-title">
+                <h3>{{ album.class.name }}</h3>
+                <el-tag size="small" type="info">{{ album.class.student_count }} 人</el-tag>
               </div>
-            </template>
-          </el-image>
-          
-          <div class="photo-footer">
-            <div class="photo-meta">
-              <p class="photo-class">{{ photo.class_name }}</p>
-              <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
-              <p class="photo-activity" v-if="photo.activity">
-                <el-icon><Location /></el-icon>
-                {{ photo.activity }}
-              </p>
-              <p class="photo-children" v-if="photo.recognition_data">
-                <el-icon><User /></el-icon>
-                {{ getChildrenNames(photo.recognition_data) }}
-              </p>
+              <div class="class-stats">
+                <el-tag size="small">共 {{ album.totalPhotos }} 张照片</el-tag>
+              </div>
             </div>
             
-            <div class="photo-actions">
+            <div class="class-actions">
               <el-button 
-                type="primary" 
-                size="small" 
-                :icon="photo.liked ? 'StarFilled' : 'Star'"
-                @click="toggleLike(photo)"
+                size="small"
+                :type="expandedClasses.includes(album.class.id) ? 'primary' : 'default'"
+                @click="toggleClass(album.class.id)"
               >
-                {{ photo.like_count || 0 }}
+                <el-icon>
+                  <component :is="expandedClasses.includes(album.class.id) ? 'ArrowUp' : 'ArrowDown'" />
+                </el-icon>
+                {{ expandedClasses.includes(album.class.id) ? '收起' : '展开' }}
               </el-button>
             </div>
           </div>
-        </div>
-      </div>
-      
-      <!-- 瀑布流视图 -->
-      <div v-else class="photo-waterfall">
-        <div class="waterfall-column" v-for="column in waterfallColumns" :key="column.id">
-          <div 
-            v-for="photo in column.photos" 
-            :key="photo.id" 
-            class="waterfall-item"
-          >
-            <el-image 
-              :src="photo.path" 
-              :preview-src-list="photos.map(p => p.path)"
-              :initial-index="photos.findIndex(p => p.id === photo.id)"
-              fit="cover"
-              class="waterfall-image"
-            >
-              <template #error>
-                <div class="image-slot">
-                  <el-icon><Picture /></el-icon>
-                </div>
-              </template>
-            </el-image>
-            
-            <div class="waterfall-overlay">
-              <div class="overlay-content">
-                <p class="photo-class">{{ photo.class_name }}</p>
-                <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
-                <p class="photo-activity" v-if="photo.activity">
-                  <el-icon><Location /></el-icon>
-                  {{ photo.activity }}
-                </p>
-                <div class="overlay-actions">
-                  <el-button 
-                    type="primary" 
-                    size="small" 
-                    :icon="photo.liked ? 'StarFilled' : 'Star'"
-                    @click="toggleLike(photo)"
-                  >
-                    {{ photo.like_count || 0 }}
-                  </el-button>
+          
+          <el-collapse-transition>
+            <div v-show="expandedClasses.includes(album.class.id)" class="activity-groups">
+              <div v-if="album.activityGroups.length === 0" class="empty-activity-groups">
+                <el-empty description="该班级暂无公共照片" />
+              </div>
+              
+              <div v-else>
+                <div 
+                  v-for="activityGroup in album.activityGroups" 
+                  :key="activityGroup.activity"
+                  class="activity-group"
+                >
+                  <div class="activity-header">
+                    <div class="activity-info">
+                      <el-icon><Location /></el-icon>
+                      <span class="activity-name">{{ activityGroup.activity }}</span>
+                      <el-tag size="small" type="success">{{ activityGroup.totalPhotos }} 张</el-tag>
+                    </div>
+                    
+                    <div class="activity-actions">
+                      <el-button 
+                        size="small"
+                        :type="expandedActivities.includes(activityGroup.activity) ? 'primary' : 'default'"
+                        @click="toggleActivity(activityGroup.activity)"
+                      >
+                        <el-icon>
+                          <component :is="expandedActivities.includes(activityGroup.activity) ? 'ArrowUp' : 'ArrowDown'" />
+                        </el-icon>
+                        {{ expandedActivities.includes(activityGroup.activity) ? '收起' : '查看' }}
+                      </el-button>
+                    </div>
+                  </div>
+                  
+                  <el-collapse-transition>
+                    <div v-show="expandedActivities.includes(activityGroup.activity)" class="time-groups">
+                      <div 
+                        v-for="timeGroup in activityGroup.timeGroups" 
+                        :key="timeGroup.period"
+                        class="time-group"
+                      >
+                        <div class="time-header">
+                          <div class="time-info">
+                            <el-icon><Calendar /></el-icon>
+                            <span class="time-period">{{ timeGroup.formattedPeriod }}</span>
+                            <el-tag size="small" type="info">{{ timeGroup.photoCount }} 张</el-tag>
+                          </div>
+                          
+                          <div class="time-actions">
+                            <el-button 
+                              size="small"
+                              :type="expandedPeriods.includes(timeGroup.period) ? 'primary' : 'default'"
+                              @click="togglePeriod(timeGroup.period)"
+                            >
+                              <el-icon>
+                                <component :is="expandedPeriods.includes(timeGroup.period) ? 'ArrowUp' : 'ArrowDown'" />
+                              </el-icon>
+                              {{ expandedPeriods.includes(timeGroup.period) ? '收起' : '查看' }}
+                            </el-button>
+                          </div>
+                        </div>
+                        
+                        <el-collapse-transition>
+                          <div v-show="expandedPeriods.includes(timeGroup.period)" class="photos-grid">
+                            <div 
+                              v-for="photo in timeGroup.photos" 
+                              :key="photo.id"
+                              class="photo-item"
+                              @click="previewPhoto(photo, timeGroup.photos)"
+                            >
+                              <img 
+                                :src="getImageUrl(photo.path)" 
+                                class="photo-image"
+                                alt="照片"
+                                @error="handleImageError"
+                              />
+                              
+                              <div class="photo-overlay">
+                                <div class="photo-actions">
+                                  <el-button 
+                                    type="primary" 
+                                    size="small" 
+                                    :icon="photo.liked ? 'StarFilled' : 'Star'"
+                                    @click.stop="toggleLike(photo)"
+                                  >
+                                    {{ photo.like_count || 0 }}
+                                  </el-button>
+                                </div>
+                                
+                                <div class="photo-info">
+                                  <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
+                                  <p class="photo-children" v-if="photo.recognition_data">
+                                    <el-icon><User /></el-icon>
+                                    {{ getChildrenNames(photo.recognition_data) }}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </el-collapse-transition>
+                      </div>
+                    </div>
+                  </el-collapse-transition>
                 </div>
               </div>
             </div>
-          </div>
+          </el-collapse-transition>
         </div>
       </div>
-      
-      <!-- 空状态 -->
-      <el-empty v-if="photos.length === 0 && !loading" description="暂无照片" />
-    </el-card>
+    </div>
     
-    <!-- 分页 -->
-    <el-pagination
-      v-if="total > 0"
-      v-model:current-page="currentPage"
-      :page-size="pageSize"
-      :total="total"
-      layout="total, prev, pager, next"
-      @current-change="handlePageChange"
-      style="margin-top: 20px; text-align: center;"
-    />
+
   </div>
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Grid, Picture, User, Location } from '@element-plus/icons-vue';
+import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
 import axios from 'axios';
 
 export default {
   name: 'PublicPhotos',
   components: {
-    Grid, Picture, User, Location
+    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown
   },
   setup() {
-    const loading = ref(false);
-    const viewMode = ref('grid');
-    const photos = ref([]);
-    const classes = ref([]);
+    // 集合视图相关变量
+    const albumsLoading = ref(false);
+    const albums = ref([]);
+    const groupBy = ref('month');
+    const expandedClasses = ref([]);
+    const expandedActivities = ref([]);
+    const expandedPeriods = ref([]);
+    
+    // 孩子信息（用于显示识别到的孩子姓名）
     const children = ref([]);
-    const total = ref(0);
-    const currentPage = ref(1);
-    const pageSize = ref(20);
     
-    const filterForm = reactive({
-      classId: '',
-      dateRange: null,
-      query: ''
-    });
-    
-    // 瀑布流列数
-    const columnCount = 3;
-    
-    const waterfallColumns = computed(() => {
-      const columns = Array.from({ length: columnCount }, (_, i) => ({
-        id: i,
-        photos: []
-      }));
-      
-      photos.value.forEach((photo, index) => {
-        const columnIndex = index % columnCount;
-        columns[columnIndex].photos.push(photo);
-      });
-      
-      return columns;
-    });
+
     
     const formatDate = (dateString) => {
       if (!dateString) return '';
       return new Date(dateString).toLocaleString('zh-CN');
+    };
+    
+    // 生成正确的图片URL（使用相对路径让Vue代理处理）
+    const getImageUrl = (photoPath) => {
+      if (!photoPath) return '';
+      // 从路径中提取文件名
+      const filename = photoPath.split('/').pop();
+      // 使用相对路径，让Vue开发服务器代理处理CORS
+      return `/api/photos/image/${filename}`;
     };
     
     const getChildrenNames = (recognitionData) => {
@@ -241,65 +235,6 @@ export default {
       }).filter(name => name);
       
       return childNames.join(', ');
-    };
-    
-    const loadPhotos = async (page = 1) => {
-      loading.value = true;
-      try {
-        const params = {
-          page,
-          limit: pageSize.value
-        };
-        
-        if (filterForm.classId && filterForm.classId !== '') {
-          params.classId = filterForm.classId;
-        }
-        
-        if (filterForm.dateRange && filterForm.dateRange.length === 2) {
-          params.startDate = filterForm.dateRange[0].toISOString().split('T')[0];
-          params.endDate = filterForm.dateRange[1].toISOString().split('T')[0];
-        }
-        
-        if (filterForm.query) {
-          params.query = filterForm.query;
-        }
-        
-        const response = await axios.get('/photos/public', { params });
-        photos.value = response.data.photos;
-        total.value = response.data.total;
-      } catch (error) {
-        ElMessage.error('加载照片失败');
-      } finally {
-        loading.value = false;
-      }
-    };
-    
-    const loadClasses = async () => {
-      try {
-        const response = await axios.get('/classes');
-        classes.value = response.data;
-      } catch (error) {
-        ElMessage.error('加载班级列表失败');
-      }
-    };
-    
-    const loadChildren = async () => {
-      try {
-        const response = await axios.get('/classes/students');
-        children.value = response.data;
-      } catch (error) {
-        console.error('加载学生列表失败');
-      }
-    };
-    
-    const resetFilter = () => {
-      Object.assign(filterForm, {
-        classId: '',
-        dateRange: null,
-        query: ''
-      });
-      currentPage.value = 1;
-      loadPhotos(1);
     };
     
     const toggleLike = async (photo) => {
@@ -320,34 +255,112 @@ export default {
       }
     };
     
-    const handlePageChange = (page) => {
-      currentPage.value = page;
-      loadPhotos(page);
+    // 处理图片加载错误
+    const handleImageError = (error) => {
+      console.error('图片加载失败:', error);
+      // 可以在这里添加重试逻辑或显示默认图片
+    };
+    
+    // 预览照片（简单实现）
+    const previewPhoto = (photo) => {
+      console.log('预览照片:', photo);
+      // 这里可以添加预览逻辑
+    };
+    
+    // 加载孩子信息
+    const loadChildren = async () => {
+      try {
+        const response = await axios.get('/classes/students');
+        children.value = response.data;
+      } catch (error) {
+        console.error('加载学生列表失败');
+      }
+    };
+    
+    // 集合视图相关函数
+    const loadAlbums = async () => {
+      albumsLoading.value = true;
+      try {
+        const response = await axios.get('/photos/public-albums', {
+          params: {
+            groupBy: groupBy.value
+          }
+        });
+        
+        albums.value = response.data.albums;
+        
+        // 默认展开所有班级
+        expandedClasses.value = albums.value.map(album => album.class.id);
+        
+        console.log('加载的公共照片集数据:', albums.value);
+      } catch (error) {
+        console.error('加载公共照片集失败:', error);
+        ElMessage.error('加载照片集失败');
+      } finally {
+        albumsLoading.value = false;
+      }
+    };
+    
+
+    
+    const changeGroupBy = (newGroupBy) => {
+      groupBy.value = newGroupBy;
+      loadAlbums();
+    };
+    
+    const toggleClass = (classId) => {
+      const index = expandedClasses.value.indexOf(classId);
+      if (index > -1) {
+        expandedClasses.value.splice(index, 1);
+      } else {
+        expandedClasses.value.push(classId);
+      }
+    };
+    
+    const toggleActivity = (activity) => {
+      const index = expandedActivities.value.indexOf(activity);
+      if (index > -1) {
+        expandedActivities.value.splice(index, 1);
+      } else {
+        expandedActivities.value.push(activity);
+      }
+    };
+    
+    const togglePeriod = (period) => {
+      const index = expandedPeriods.value.indexOf(period);
+      if (index > -1) {
+        expandedPeriods.value.splice(index, 1);
+      } else {
+        expandedPeriods.value.push(period);
+      }
     };
     
     onMounted(() => {
-      loadPhotos();
-      loadClasses();
+      loadAlbums();
       loadChildren();
     });
     
     return {
-      loading,
-      viewMode,
-      photos,
-      classes,
+      // 集合视图相关
+      albumsLoading,
+      albums,
+      groupBy,
+      expandedClasses,
+      expandedActivities,
+      expandedPeriods,
       children,
-      total,
-      currentPage,
-      pageSize,
-      filterForm,
-      waterfallColumns,
+      // 函数
       formatDate,
+      getImageUrl,
+      handleImageError,
+      previewPhoto,
       getChildrenNames,
-      loadPhotos,
-      resetFilter,
       toggleLike,
-      handlePageChange
+      loadAlbums,
+      changeGroupBy,
+      toggleClass,
+      toggleActivity,
+      togglePeriod
     };
   }
 };
@@ -373,75 +386,199 @@ export default {
   font-size: 14px;
 }
 
-.card-header {
+
+
+
+
+/* 控制栏样式 */
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.group-controls {
+  display: flex;
+  gap: 10px;
+}
+
+/* 集合视图样式 */
+.albums-container {
+  padding: 20px 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+}
+
+.class-album {
+  margin-bottom: 30px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.class-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
 }
 
-/* 网格视图样式 */
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+.class-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.photo-card {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+.class-title {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.class-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.class-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.class-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.activity-groups {
+  padding: 20px;
+}
+
+.empty-activity-groups {
+  text-align: center;
+  padding: 40px;
+}
+
+.activity-group {
+  margin-bottom: 25px;
   background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.photo-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.activity-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.activity-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.activity-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.time-groups {
+  padding: 15px;
+}
+
+.time-group {
+  margin-bottom: 20px;
+}
+
+.time-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.time-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-period {
+  font-size: 14px;
+  font-weight: 500;
+  color: #606266;
+}
+
+.time-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.photo-item {
+  position: relative;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+}
+
+.photo-item:hover {
+  transform: scale(1.05);
 }
 
 .photo-image {
   width: 100%;
-  height: 200px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
-.photo-footer {
-  padding: 15px;
-}
-
-.photo-meta {
-  margin-bottom: 10px;
-}
-
-.photo-class {
-  font-weight: bold;
-  color: #409EFF;
-  margin: 0 0 5px 0;
-  font-size: 14px;
-}
-
-.photo-date {
-  color: #909399;
-  font-size: 12px;
-  margin: 0 0 5px 0;
-}
-
-.photo-activity {
-  color: #E6A23C;
-  font-size: 12px;
-  margin: 0 0 5px 0;
+.photo-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
+  color: white;
   display: flex;
-  align-items: center;
-  gap: 5px;
-  font-weight: 500;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.photo-children {
-  color: #606266;
-  font-size: 13px;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.photo-item:hover .photo-overlay {
+  opacity: 1;
 }
 
 .photo-actions {
@@ -449,91 +586,48 @@ export default {
   justify-content: flex-end;
 }
 
-/* 瀑布流样式 */
-.photo-waterfall {
-  display: flex;
-  gap: 15px;
-}
-
-.waterfall-column {
-  flex: 1;
+.photo-info {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 4px;
 }
 
-.waterfall-item {
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease;
-}
-
-.waterfall-item:hover {
-  transform: scale(1.02);
-}
-
-.waterfall-image {
-  width: 100%;
-  height: auto;
-  min-height: 150px;
-}
-
-.waterfall-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(transparent, rgba(0,0,0,0.7));
-  opacity: 0;
-  transition: opacity 0.3s ease;
+.photo-info p {
+  margin: 0;
+  font-size: 12px;
   display: flex;
-  align-items: flex-end;
-}
-
-.waterfall-item:hover .waterfall-overlay {
-  opacity: 1;
-}
-
-.overlay-content {
-  padding: 15px;
-  color: white;
-  width: 100%;
-}
-
-.overlay-actions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.image-slot {
-  display: flex;
-  justify-content: center;
   align-items: center;
-  width: 100%;
-  height: 100%;
-  background: var(--el-fill-color-light);
-  color: var(--el-text-color-secondary);
-  font-size: 24px;
-  min-height: 150px;
+  gap: 4px;
+}
+
+.photo-date {
+  color: #e4e7ed;
+}
+
+.photo-children {
+  color: #67c23a;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .photo-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
+  .group-controls {
+    flex-wrap: wrap;
+    justify-content: center;
   }
   
-  .photo-waterfall {
+  .class-header {
     flex-direction: column;
+    gap: 15px;
+    text-align: center;
   }
   
-  .waterfall-column {
-    width: 100%;
+  .photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+  
+  .photo-image {
+    height: 100px;
   }
 }
 </style> 

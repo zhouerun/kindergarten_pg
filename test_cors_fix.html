@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-image {
+            max-width: 200px;
+            height: auto;
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>CORS修复测试</h1>
+    
+    <div class="test-section">
+        <h2>直接访问后端图片API (应该失败)</h2>
+        <p>这个测试应该会失败，因为跨域访问：</p>
+        <img id="direct-image" 
+             src="http://localhost:3000/api/photos/image/images-1752457410002-17974766.jpg" 
+             alt="直接访问图片" 
+             class="test-image"
+             onerror="document.getElementById('direct-result').innerHTML = '<span class=error>❌ 跨域访问失败（预期结果）</span>'"
+             onload="document.getElementById('direct-result').innerHTML = '<span class=success>✅ 直接访问成功</span>'">
+        <div id="direct-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>通过前端代理访问 (应该成功)</h2>
+        <p>这个测试应该会成功，因为Vue代理处理了跨域：</p>
+        <img id="proxy-image" 
+             src="http://localhost:8080/api/photos/image/images-1752457410002-17974766.jpg" 
+             alt="代理访问图片" 
+             class="test-image"
+             onerror="document.getElementById('proxy-result').innerHTML = '<span class=error>❌ 代理访问失败</span>'"
+             onload="document.getElementById('proxy-result').innerHTML = '<span class=success>✅ 代理访问成功</span>'">
+        <div id="proxy-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>API响应测试</h2>
+        <button onclick="testAPI()">测试API响应</button>
+        <div id="api-result"></div>
+        <pre id="api-response"></pre>
+    </div>
+    
+    <script>
+        function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            const responseDiv = document.getElementById('api-response');
+            
+            resultDiv.innerHTML = '测试中...';
+            
+            fetch('http://localhost:8080/api/photos/teacher-albums')
+                .then(response => response.json())
+                .then(data => {
+                    resultDiv.innerHTML = '<span class="success">✅ API调用成功</span>';
+                    responseDiv.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = '<span class="error">❌ API调用失败: ' + error.message + '</span>';
+                    responseDiv.textContent = error.toString();
+                });
+        }
+    </script>
+</body>
+</html> 
