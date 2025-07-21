@@ -150,14 +150,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="recognitionResult" label="识别结果">
-          <template #default="scope">
-            <span v-if="scope.row.recognitionResult">
-              识别到 {{ scope.row.recognitionResult.length }} 名学生
-            </span>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
+
         <el-table-column prop="uploadTime" label="上传时间" width="180" />
       </el-table>
     </el-card>
@@ -347,30 +340,44 @@ export default {
       }
       
       uploading.value = true;
-      
       try {
-        // 创建FormData对象
-        const formData = new FormData();
-        formData.append('classId', uploadForm.classId);
-        formData.append('isPublic', uploadForm.isPublic);
-        formData.append('activity', uploadForm.activity || '');
+        // 将文件转换为base64的辅助函数
+        const fileToBase64 = (file) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+          });
+        };
+
+        // 转换所有文件为base64
+        const base64Images = await Promise.all(
+          fileList.value.map(file => fileToBase64(file.raw))
+        );
+
+        // 构造要发送的JSON对象，确保uploadForm中的数据被带上
+        const payload = {
+          class_id: fileList.value.map(() => uploadForm.classId),
+          is_public: fileList.value.map(() => uploadForm.isPublic),
+          activity_detail: fileList.value.map(() => uploadForm.activity || ''),
+          uploader_id: fileList.value.map(() => store.state.user?.id || store.state.userId),
+          images: base64Images
+        };
         
-        // 添加所有文件到FormData
-        fileList.value.forEach(file => {
-          formData.append('images', file.raw); // file.raw是实际的File对象
-        });
+        console.log('开始上传，文件数量:', fileList.value.length, '上传表单数据:', uploadForm);
         
-        console.log('开始上传，文件数量:', fileList.value.length);
-        
-        // 发送上传请求到正确的端点
-        const response = await axios.post('/photos', formData, {
+        // 发送上传请求到本地代理服务（解决跨域问题）
+        const response = await axios.post('/photos/batch-recognize', payload, {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${store.state.token}`
           },
           onUploadProgress: (progressEvent) => {
+            if (progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             console.log(`上传进度: ${percentCompleted}%`);
+            }
           }
         });
         

@@ -17,6 +17,7 @@ CREATE TABLE users (
   password VARCHAR(100) NOT NULL,
   role ENUM('teacher', 'parent') NOT NULL,
   full_name VARCHAR(100) NOT NULL,
+  telephone_number VARCHAR(20) DEFAULT NULL,
   child_id INT DEFAULT NULL,
   class_id INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -26,11 +27,13 @@ CREATE TABLE users (
 -- 添加班级表的外键约束
 ALTER TABLE classes ADD FOREIGN KEY (teacher_id) REFERENCES users(id);
 
--- 孩子档案表
+-- 孩子表
 CREATE TABLE children (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL,
   class_id INT NOT NULL,
+  student_number VARCHAR(20) NOT NULL DEFAULT '',
+  age INT DEFAULT NULL,
   features JSON DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (class_id) REFERENCES classes(id)
@@ -43,14 +46,14 @@ CREATE TABLE photos (
   uploader_id INT NOT NULL,
   class_id INT NOT NULL,
   is_public tinyint(1) DEFAULT 1,
-  activity_id TEXT DEFAULT NULL,
-  --recognition_data JSON DEFAULT NULL,
+  activity TEXT DEFAULT NULL,
+  recognition_data JSON DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (uploader_id) REFERENCES users(id),
   FOREIGN KEY (class_id) REFERENCES classes(id)
 );
 --照片孩子关联表
-CREATE TABLE photo_child (
+CREATE TABLE IF NOT EXISTS photo_child (
   photo_id INT NOT NULL,
   child_id INT NOT NULL,
   PRIMARY KEY (photo_id, child_id),

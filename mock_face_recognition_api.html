@@ -399,11 +399,11 @@ const storage = multer.memoryStorage();
             <h4>文件验证：</h4>
             <div class="code-block">
 fileFilter: function (req, file, cb) {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  const allowedTypes = ['image/jpg','image/jpeg','image/png','image/bmp','image/tiff','image/webp'];
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('只支持 JPG、PNG 格式的图片'), false);
+    cb(new Error('只支持 JPG、JPEG\PNG、BMP、TIFF、WEBP 格式的图片'), false);
   }
 }
             </div>

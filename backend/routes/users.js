@@ -158,7 +158,7 @@ router.get('/children', authenticateToken, authorizeRole(['parent']), async (req
     const parentId = req.user.id;
     
     const [children] = await pool.execute(`
-      SELECT c.id, c.name, c.class_id, c.created_at,
+      SELECT c.id, c.name, c.age, c.class_id, c.created_at,
              cl.name as class_name
       FROM children c
       JOIN parent_child pc ON c.id = pc.child_id
@@ -190,7 +190,7 @@ router.post('/bind-child', authenticateToken, authorizeRole(['parent']), async (
 
     // 检查孩子是否存在（通过学号查找）
     const [child] = await pool.execute(
-      'SELECT id, name, student_number FROM children WHERE student_number = ?',
+      'SELECT id, name, student_number, age FROM children WHERE student_number = ?',
       [studentNumber]
     );
 

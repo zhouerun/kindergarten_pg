@@ -163,9 +163,9 @@
                                 
                                 <div class="photo-info">
                                   <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
-                                  <p class="photo-children" v-if="photo.recognition_data">
+                                  <p class="photo-children" v-if="photo.children && photo.children.length > 0">
                                     <el-icon><User /></el-icon>
-                                    {{ getChildrenNames(photo.recognition_data) }}
+                                    {{ getChildrenNames(photo) }}
                                   </p>
                                 </div>
                               </div>
@@ -217,22 +217,21 @@ export default {
       return new Date(dateString).toLocaleString('zh-CN');
     };
     
-    // 生成正确的图片URL（使用相对路径让Vue代理处理）
+    // 生成正确的图片URL（直接使用OSS完整路径）
     const getImageUrl = (photoPath) => {
       if (!photoPath) return '';
-      // 从路径中提取文件名
-      const filename = photoPath.split('/').pop();
-      // 使用相对路径，让Vue开发服务器代理处理CORS
-      return `/api/photos/image/${filename}`;
+      // 如果已经是完整的URL，直接返回
+      if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+        return photoPath;
+      }
+      // 如果是相对路径，转换为OSS完整路径
+      return photoPath;
     };
     
-    const getChildrenNames = (recognitionData) => {
-      if (!recognitionData || !recognitionData.child_ids) return '';
+    const getChildrenNames = (photo) => {
+      if (!photo || !photo.children || !Array.isArray(photo.children)) return '';
       
-      const childNames = recognitionData.child_ids.map(id => {
-        const child = children.value.find(c => c.id === id);
-        return child ? child.name : '';
-      }).filter(name => name);
+      const childNames = photo.children.map(child => child.name).filter(name => name);
       
       return childNames.join(', ');
     };

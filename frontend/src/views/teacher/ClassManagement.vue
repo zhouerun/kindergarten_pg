@@ -20,25 +20,11 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="name" label="姓名" width="120" />
         <el-table-column prop="student_number" label="学号" width="120" />
+        <el-table-column prop="age" label="年龄" width="80" />
         <el-table-column prop="class_name" label="班级" width="120" />
         <el-table-column prop="created_at" label="入学时间" width="180">
           <template #default="scope">
             {{ formatDate(scope.row.created_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="家长信息">
-          <template #default="scope">
-            <el-tag 
-              v-for="parent in scope.row.parents" 
-              :key="parent.id"
-              size="small"
-              style="margin-right: 5px;"
-            >
-              {{ parent.full_name }}
-            </el-tag>
-            <span v-if="!scope.row.parents || scope.row.parents.length === 0">
-              暂无家长
-            </span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200">
@@ -80,6 +66,16 @@
         
         <el-form-item label="学号" prop="studentNumber">
           <el-input v-model="studentFormData.studentNumber" placeholder="请输入学号" />
+        </el-form-item>
+        
+        <el-form-item label="年龄" prop="age">
+          <el-input-number 
+            v-model="studentFormData.age" 
+            :min="1" 
+            :max="10" 
+            placeholder="请输入年龄"
+            style="width: 100%;"
+          />
         </el-form-item>
         
         <el-form-item label="班级" prop="classId">
@@ -131,6 +127,7 @@ export default {
     const studentFormData = reactive({
       name: '',
       studentNumber: '',
+      age: null,
       classId: null
     });
     
@@ -142,6 +139,10 @@ export default {
       studentNumber: [
         { required: true, message: '请输入学号', trigger: 'blur' },
         { min: 1, max: 20, message: '学号长度在 1 到 20 个字符', trigger: 'blur' }
+      ],
+      age: [
+        { required: true, message: '请输入学生年龄', trigger: 'blur' },
+        { type: 'number', min: 1, max: 10, message: '年龄必须在 1 到 10 岁之间', trigger: 'blur' }
       ],
       classId: [
         { required: true, message: '请选择班级', trigger: 'change' }
@@ -179,6 +180,7 @@ export default {
       Object.assign(studentFormData, {
         name: student.name,
         studentNumber: student.student_number || '',
+        age: student.age || null,
         classId: student.class_id
       });
       showAddDialog.value = true;
@@ -218,6 +220,7 @@ export default {
           await axios.put(`/classes/students/${editingStudent.value.id}`, {
             name: studentFormData.name,
             student_number: studentFormData.studentNumber,
+            age: studentFormData.age,
             class_id: studentFormData.classId
           });
           ElMessage.success('编辑成功');
@@ -226,6 +229,7 @@ export default {
           await axios.post('/classes/students', {
             name: studentFormData.name,
             student_number: studentFormData.studentNumber,
+            age: studentFormData.age,
             class_id: studentFormData.classId
           });
           ElMessage.success('添加成功');
@@ -246,6 +250,7 @@ export default {
       Object.assign(studentFormData, {
         name: '',
         studentNumber: '',
+        age: null,
         classId: null
       });
       studentForm.value?.resetFields();

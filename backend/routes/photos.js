@@ -2,8 +2,17 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { pool } = require('../config/database');
+const { pool, executeWithRetry } = require('../config/database');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
+
+// 添加axios用于代理请求到远端服务
+let axios;
+try {
+  axios = require('axios');
+} catch (error) {
+  console.warn('⚠️  警告: axios 依赖未安装，批量识别功能将不可用');
+  console.warn('请运行以下命令安装依赖: npm install axios');
+}
 
 const router = express.Router();
 
@@ -28,7 +37,7 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/bmp', 'image/tiff', 'image/webp'];
+    const allowedTypes = ['image/jpg','image/jpeg','image/png','image/bmp','image/tiff','image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -49,7 +58,7 @@ const simulateFaceRecognition = async (classId) => {
   console.log('⚠️  使用模拟人脸识别功能 - 仅用于开发测试');
   
   // 获取班级所有学生（真实API中应该是从人脸库中匹配）
-  const [children] = await pool.execute(
+  const children = await executeWithRetry(
     'SELECT id FROM children WHERE class_id = ?',
     [classId]
   );
@@ -111,7 +120,7 @@ router.post('/', authenticateToken, authorizeRole(['teacher']), upload.array('im
       
       // 保存照片记录到数据库
       console.log('准备插入数据库');
-      const [result] = await pool.execute(
+      const result = await executeWithRetry(
         'INSERT INTO photos (path, uploader_id, class_id, is_public, activity, recognition_data) VALUES (?, ?, ?, ?, ?, ?)',
         [
           `/uploads/${file.filename}`,
@@ -133,7 +142,7 @@ router.post('/', authenticateToken, authorizeRole(['teacher']), upload.array('im
         // 循环插入photo_child记录
         for (const childId of recognitionData.child_ids) {
           try {
-            await pool.execute(
+            await executeWithRetry(
               'INSERT INTO photo_child (photo_id, child_id) VALUES (?, ?)',
               [photoId, childId]
             );
@@ -183,7 +192,7 @@ router.get('/public', authenticateToken, async (req, res) => {
     }
     
     // 从数据库获取公共照片
-    const [photos] = await pool.execute(`
+    const photos = await executeWithRetry(`
       SELECT p.id, p.path, p.created_at, p.activity, u.full_name as uploader_name,
              c.name as class_name, p.recognition_data,
              (SELECT COUNT(*) FROM likes l WHERE l.photo_id = p.id) as like_count
@@ -197,44 +206,25 @@ router.get('/public', authenticateToken, async (req, res) => {
     
     console.log('从数据库获取的公共照片数量:', photos.length);
     
-    // 为每张照片添加识别到的孩子信息（从数据库获取）
+    // 为每张照片添加识别到的孩子信息（从photo_child关系表获取）
     for (let photo of photos) {
-      if (photo.recognition_data) {
-        try {
-          // 检查recognition_data是否已经是对象还是需要解析的字符串
-          let recognitionData;
-          if (typeof photo.recognition_data === 'string') {
-            recognitionData = JSON.parse(photo.recognition_data);
-          } else if (typeof photo.recognition_data === 'object') {
-            recognitionData = photo.recognition_data;
-          } else {
-            photo.children = [];
-            continue;
-          }
-          
-          const childIds = recognitionData.child_ids || [];
-          
-          if (childIds.length > 0) {
-            // 使用字符串插值避免prepared statement问题
-            const placeholders = childIds.map(id => `${parseInt(id)}`).join(',');
-            const [children] = await pool.execute(
-              `SELECT id, name FROM children WHERE id IN (${placeholders})`
-            );
-            photo.children = children;
-          } else {
-            photo.children = [];
-          }
-        } catch (parseError) {
-          console.error('解析公共照片识别数据错误:', parseError);
-          photo.children = [];
-        }
-      } else {
+      try {
+        const children = await executeWithRetry(`
+          SELECT c.id, c.name 
+          FROM children c
+          INNER JOIN photo_child pc ON c.id = pc.child_id
+          WHERE pc.photo_id = ?
+        `, [photo.id]);
+        
+        photo.children = children;
+      } catch (error) {
+        console.error('获取照片孩子信息错误:', error);
         photo.children = [];
       }
     }
     
     // 获取公共照片总数
-    const [totalResult] = await pool.execute(
+    const totalResult = await executeWithRetry(
       'SELECT COUNT(*) as total FROM photos WHERE is_public = true'
     );
     const total = totalResult[0].total;
@@ -369,7 +359,7 @@ router.get('/albums', authenticateToken, authorizeRole(['parent']), async (req, 
     
     // 第1步：获取家长的孩子信息
     const [parentChildren] = await pool.execute(`
-      SELECT c.id, c.name, c.class_id, cl.name as class_name 
+      SELECT c.id, c.name, c.age, c.class_id, cl.name as class_name 
       FROM children c 
       LEFT JOIN classes cl ON c.class_id = cl.id
       WHERE c.id IN (SELECT child_id FROM parent_child WHERE parent_id = ?)
@@ -706,7 +696,7 @@ router.get('/public-albums', authenticateToken, authorizeRole(['parent']), async
     
     // 第1步：获取家长的孩子信息（用于过滤相关的班级）
     const [parentChildren] = await pool.execute(`
-      SELECT c.id, c.name, c.class_id, cl.name as class_name 
+      SELECT c.id, c.name, c.age, c.class_id, cl.name as class_name 
       FROM children c 
       LEFT JOIN classes cl ON c.class_id = cl.id
       WHERE c.id IN (SELECT child_id FROM parent_child WHERE parent_id = ?)
@@ -846,6 +836,74 @@ router.get('/public-albums', authenticateToken, authorizeRole(['parent']), async
   } catch (error) {
     console.error('获取公共照片集错误:', error);
     res.status(500).json({ error: '获取公共照片集失败: ' + error.message });
+  }
+});
+
+// 批量识别代理路由 - 解决跨域问题
+router.post('/batch-recognize', authenticateToken, authorizeRole(['teacher']), async (req, res) => {
+  console.log('=== 批量识别代理请求开始 ===');
+  console.log('用户信息:', req.user);
+  console.log('请求体键:', Object.keys(req.body));
+  
+  try {
+    // 检查axios是否可用
+    if (!axios) {
+      return res.status(503).json({ 
+        error: '服务暂时不可用',
+        message: '批量识别服务需要安装axios依赖',
+        instruction: '请管理员运行: npm install axios'
+      });
+    }
+    
+    // 远端服务配置
+    const REMOTE_BATCH_RECOGNIZE_API = process.env.REMOTE_BATCH_RECOGNIZE_API || 'http://192.168.5.25:5000/batch_recognize';
+    const REMOTE_API_TIMEOUT = parseInt(process.env.REMOTE_API_TIMEOUT) || 60000;
+    
+    console.log('转发请求到远端服务:', REMOTE_BATCH_RECOGNIZE_API);
+    console.log('请求数据大小:', JSON.stringify(req.body).length, '字符');
+    
+    // 转发请求到远端服务
+    const response = await axios.post(REMOTE_BATCH_RECOGNIZE_API, req.body, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: REMOTE_API_TIMEOUT,
+      maxContentLength: 100 * 1024 * 1024, // 100MB
+      maxBodyLength: 100 * 1024 * 1024,
+    });
+    
+    console.log('远端服务响应状态:', response.status);
+    console.log('远端服务响应数据类型:', typeof response.data);
+    
+    // 返回远端服务的响应
+    res.json(response.data);
+    
+  } catch (error) {
+    console.error('批量识别代理错误:', error.message);
+    
+    if (error.response) {
+      // 远端服务返回了错误响应
+      console.error('远端服务错误状态:', error.response.status);
+      console.error('远端服务错误数据:', error.response.data);
+      res.status(error.response.status).json({
+        error: '远端识别服务错误',
+        details: error.response.data
+      });
+    } else if (error.request) {
+      // 请求发送失败（网络问题等）
+      console.error('网络请求失败:', error.request);
+      res.status(503).json({
+        error: '无法连接到远端识别服务',
+        message: '请检查网络连接或稍后重试'
+      });
+    } else {
+      // 其他错误
+      console.error('请求配置错误:', error.message);
+      res.status(500).json({
+        error: '批量识别服务内部错误',
+        message: error.message
+      });
+    }
   }
 });
 

@@ -19,7 +19,9 @@
     "dotenv": "^16.3.1",
     "express-validator": "^7.0.1",
     "helmet": "^7.0.0",
-    "express-rate-limit": "^6.10.0"
+    "express-rate-limit": "^6.10.0",
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

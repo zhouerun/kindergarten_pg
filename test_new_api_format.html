@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试新的训练数据API格式</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="number"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .image-preview {
+            max-width: 150px;
+            max-height: 150px;
+            margin: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .images-container {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧑‍🎓 测试新的训练数据API格式</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            按照 start_system.py 中的示例格式测试训练数据上传
+        </p>
+
+        <div class="section">
+            <h3>🔐 认证信息</h3>
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="请输入JWT Token（登录后获取）">
+            <button onclick="checkToken()">验证Token</button>
+        </div>
+
+        <div class="section">
+            <h3>👶 孩子信息</h3>
+            <label for="childName">孩子姓名:</label>
+            <input type="text" id="childName" value="张三" placeholder="请输入孩子姓名">
+            
+            <label for="childAge">孩子年龄:</label>
+            <input type="number" id="childAge" value="5" min="1" max="10" placeholder="请输入孩子年龄">
+        </div>
+
+        <div class="section">
+            <h3>📸 训练照片 (最多5张)</h3>
+            <label for="images">选择照片:</label>
+            <input type="file" id="images" accept="image/*" multiple>
+            <div class="images-container" id="imagePreview"></div>
+            <p style="color: #666; font-size: 14px;">
+                <strong>注意:</strong> 图片将被转换为base64格式发送
+            </p>
+        </div>
+
+        <div class="section">
+            <h3>🚀 测试操作</h3>
+            <button onclick="uploadTrainingData()" id="uploadBtn">上传训练数据</button>
+            <button onclick="testOldFormat()">测试旧格式(对比)</button>
+            <button onclick="clearResults()">清空结果</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // 显示结果
+        function showResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(resultDiv);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        // 清空结果
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // 验证Token
+        async function checkToken() {
+            const token = document.getElementById('token').value.trim();
+            if (!token) {
+                showResult('请输入JWT Token', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult(`Token有效! 用户: ${data.user.username} (${data.user.role})`, 'success');
+                } else {
+                    showResult('Token无效或已过期', 'error');
+                }
+            } catch (error) {
+                showResult(`Token验证错误: ${error.message}`, 'error');
+            }
+        }
+
+        // 文件转base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // 显示图片预览
+        document.getElementById('images').addEventListener('change', function(e) {
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.innerHTML = '';
+            
+            if (e.target.files.length > 5) {
+                showResult('最多只能选择5张图片', 'error');
+                e.target.value = '';
+                return;
+            }
+
+            Array.from(e.target.files).forEach((file, index) => {
+                const img = document.createElement('img');
+                img.className = 'image-preview';
+                img.src = URL.createObjectURL(file);
+                img.title = `${file.name} (${(file.size/1024).toFixed(1)}KB)`;
+                previewContainer.appendChild(img);
+            });
+        });
+
+        // 上传训练数据 - 新格式
+        async function uploadTrainingData() {
+            const token = document.getElementById('token').value.trim();
+            const childName = document.getElementById('childName').value.trim();
+            const childAge = parseInt(document.getElementById('childAge').value);
+            const imageFiles = document.getElementById('images').files;
+
+            // 验证输入
+            if (!token) {
+                showResult('请先输入JWT Token', 'error');
+                return;
+            }
+
+            if (!childName) {
+                showResult('请输入孩子姓名', 'error');
+                return;
+            }
+
+            if (!childAge || childAge < 1 || childAge > 10) {
+                showResult('请输入有效的孩子年龄(1-10岁)', 'error');
+                return;
+            }
+
+            if (imageFiles.length === 0) {
+                showResult('请选择要上传的照片', 'error');
+                return;
+            }
+
+            if (imageFiles.length > 5) {
+                showResult('最多只能上传5张照片', 'error');
+                return;
+            }
+
+            showResult(`开始处理 ${imageFiles.length} 张图片...`, 'info');
+            
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '上传中...';
+
+            try {
+                // 转换图片为base64
+                const images = [];
+                for (let i = 0; i < imageFiles.length; i++) {
+                    const file = imageFiles[i];
+                    showResult(`正在处理第 ${i+1} 张图片: ${file.name}`, 'info');
+                    const base64 = await fileToBase64(file);
+                    images.push(base64);
+                }
+
+                showResult(`所有图片已转换为base64格式，开始上传...`, 'info');
+
+                // 构建请求数据 (按照start_system.py格式)
+                const requestData = {
+                    name: childName,
+                    images: images,
+                    profile: {
+                        age: childAge
+                    }
+                };
+
+                showResult(`发送数据: 姓名=${childName}, 年龄=${childAge}, 图片=${images.length}张`, 'info');
+
+                // 发送请求
+                const response = await fetch('/api/mock-face-recognition/database/add_child', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const responseData = await response.json();
+
+                if (response.ok) {
+                    showResult('✅ 上传成功!', 'success');
+                    showResult(`响应数据: ${JSON.stringify(responseData, null, 2)}`, 'success');
+                } else {
+                    showResult(`❌ 上传失败: ${responseData.error}`, 'error');
+                    showResult(`完整响应: ${JSON.stringify(responseData, null, 2)}`, 'error');
+                }
+
+            } catch (error) {
+                showResult(`💥 上传异常: ${error.message}`, 'error');
+                console.error('上传错误:', error);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '上传训练数据';
+            }
+        }
+
+        // 测试旧格式 (对比用)
+        async function testOldFormat() {
+            const token = document.getElementById('token').value.trim();
+            const imageFiles = document.getElementById('images').files;
+
+            if (!token || imageFiles.length === 0) {
+                showResult('请先输入Token和选择图片', 'error');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('childId', '1'); // 假设的ID
+                formData.append('age', document.getElementById('childAge').value);
+                
+                for (let i = 0; i < imageFiles.length; i++) {
+                    formData.append('faceImages', imageFiles[i]);
+                }
+
+                const response = await fetch('/api/mock-face-recognition/upload-training-data', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const responseData = await response.json();
+
+                if (response.ok) {
+                    showResult('✅ 旧格式测试成功!', 'success');
+                    showResult(`旧格式响应: ${JSON.stringify(responseData, null, 2)}`, 'info');
+                } else {
+                    showResult(`❌ 旧格式测试失败: ${responseData.error}`, 'error');
+                }
+
+            } catch (error) {
+                showResult(`💥 旧格式测试异常: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            showResult('页面已加载完成，请先获取JWT Token并验证', 'info');
+            showResult('新格式API端点: POST /api/mock-face-recognition/database/add_child', 'info');
+            showResult('数据格式: {"name": "张三", "images": ["base64..."], "profile": {"age": 5}}', 'info');
+        });
+    </script>
+</body>
+</html> 

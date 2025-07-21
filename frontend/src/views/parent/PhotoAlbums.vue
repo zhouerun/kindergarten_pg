@@ -294,13 +294,15 @@ export default {
       return new Date(dateString).toLocaleString('zh-CN');
     };
     
-    // 生成正确的图片URL（使用相对路径让Vue代理处理）
+    // 生成正确的图片URL（直接使用OSS完整路径）
     const getImageUrl = (photoPath) => {
       if (!photoPath) return '';
-      // 从路径中提取文件名
-      const filename = photoPath.split('/').pop();
-      // 使用相对路径，让Vue开发服务器代理处理CORS
-      return `/api/photos/image/${filename}`;
+      // 如果已经是完整的URL，直接返回
+      if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+        return photoPath;
+      }
+      // 如果是相对路径，转换为OSS完整路径
+      return photoPath;
     };
     
     const loadAlbums = async () => {

@@ -3,6 +3,14 @@ const { defineConfig } = require('@vue/cli-service');
 module.exports = defineConfig({
   transpileDependencies: true,
   
+  // Vue 3 特性标志配置
+  define: {
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+    __VUE_PROD_DEVTOOLS__: false,
+    __VUE_OPTIONS_API__: true,
+    __VUE_PROD_TIPS__: false
+  },
+  
   // 开发服务器配置
   devServer: {
     port: 8080,

@@ -89,7 +89,7 @@
         style="margin-bottom: 20px;"
       >
         <template #default>
-          <p>• 需要至少 5 张高质量照片</p>
+          <p>• 需要至少5张高质量照片</p>
           <p>• 请确保孩子面部清晰可见</p>
           <p>• 建议上传不同角度和表情的照片</p>
           <p>• 避免多人合照或背光照片</p>
@@ -143,9 +143,9 @@
           type="primary" 
           @click="uploadFaceImages"
           :loading="faceUploading"
-          :disabled="faceFileList.length === 0"
+          :disabled="faceFileList.length === 0 || bindingCompleted"
         >
-          上传照片 ({{ faceFileList.length }})
+          {{ bindingCompleted ? '绑定已完成' : `上传照片 (${faceFileList.length})` }}
         </el-button>
         <el-button @click="clearFaceFiles">清空文件</el-button>
         <el-button type="success" @click="completeFaceUpload" v-if="trainingStatus?.trainingCompleted">
@@ -257,6 +257,7 @@ export default {
     const faceUploadRef = ref(null);
     const faceFileList = ref([]);
     const trainingStatus = ref(null);
+    const bindingCompleted = ref(false); // 新增：绑定完成状态
     
     const bindingFormData = reactive({
       studentNumber: ''
@@ -293,6 +294,7 @@ export default {
         
         // 绑定成功后，显示人脸识别数据上传界面
         currentChild.value = response.data.child;
+        bindingCompleted.value = false; // 重置绑定状态
         showFaceUpload.value = true;
         await loadTrainingStatus(response.data.child.id);
         
@@ -352,15 +354,15 @@ export default {
     };
     
     const beforeFaceUpload = (file) => {
-      const isImage = ['image/jpeg', 'image/png', 'image/jpg'].includes(file.type);
-      const isLt5M = file.size / 1024 / 1024 < 5;
+      const isImage = ['image/jpg','image/jpeg','image/png','image/bmp','image/tiff','image/webp'].includes(file.type);
+      const isLt10M = file.size / 1024 / 1024 < 10;
       
       if (!isImage) {
-        ElMessage.error('只能上传 JPG、PNG 格式的照片!');
+        ElMessage.error('只能上传 JPG、JPEG、PNG、BMP、TIFF、WEBP 格式的照片!');
         return false;
       }
-      if (!isLt5M) {
-        ElMessage.error('照片大小不能超过 5MB!');
+      if (!isLt10M) {
+        ElMessage.error('照片大小不能超过 10MB!');
         return false;
       }
       return true;
@@ -379,6 +381,16 @@ export default {
       faceUploadRef.value?.clearFiles();
     };
     
+    // 将文件转换为base64格式
+    const fileToBase64 = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    };
+
     const uploadFaceImages = async () => {
       if (!currentChild.value) {
         ElMessage.error('请先绑定孩子');
@@ -393,27 +405,69 @@ export default {
       faceUploading.value = true;
       
       try {
-        const formData = new FormData();
-        formData.append('childId', currentChild.value.id);
+        // 转换所有图片为base64格式
+        const images = [];
+        for (const file of faceFileList.value) {
+          try {
+            const base64 = await fileToBase64(file.raw);
+            images.push(base64);
+          } catch (error) {
+            ElMessage.error(`图片${file.name}转换失败`);
+            return;
+          }
+        }
         
-        faceFileList.value.forEach(file => {
-          formData.append('faceImages', file.raw);
+        // 按照start_system.py格式构建请求数据
+        const requestData = {
+          name: currentChild.value.name,
+          images: images,
+          profile: {
+            age: currentChild.value.age
+          }
+        };
+        
+        console.log('发送训练数据:', {
+          name: requestData.name,
+          imagesCount: requestData.images.length,
+          age: requestData.profile.age
         });
         
-        const response = await axios.post('/mock-face-recognition/upload-training-data', formData, {
+        const response = await axios.post('/mock-face-recognition/database/add_child', requestData, {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
           }
         });
         
+        // 检查远端返回的success状态
+        if (response.data.success === true) {
+          ElMessage.success('人脸识别训练成功！孩子绑定已完成');
+          
+          // 设置绑定完成状态
+          bindingCompleted.value = true;
+          
+          // 绑定成功后，隐藏上传界面，显示绑定成功状态
+          showFaceUpload.value = false;
+          currentChild.value = null;
+          trainingStatus.value = null;
+          clearFaceFiles();
+          
+          // 重新加载已绑定的孩子列表
+          await loadBoundChildren();
+          
+          return; // 阻止继续执行
+        }
+        
+        // 如果success不为true，显示其他消息
         ElMessage.success(response.data.message);
         
         // 显示上传结果
         const summary = response.data.summary;
-        if (summary.recommendation.status === 'insufficient') {
+        if (summary?.recommendation?.status === 'insufficient') {
           ElMessage.warning(summary.recommendation.message);
-        } else if (summary.recommendation.status === 'sufficient') {
+        } else if (summary?.recommendation?.status === 'sufficient') {
           ElMessage.success('人脸识别训练数据充足，可以完成绑定！');
+        } else if (summary?.recommendation?.status === 'submitted') {
+          ElMessage.success('训练数据已提交到远端服务进行处理！');
         }
         
         // 清空文件列表并重新加载状态
@@ -421,6 +475,7 @@ export default {
         await loadTrainingStatus(currentChild.value.id);
         
       } catch (error) {
+        console.error('上传错误:', error);
         ElMessage.error(error.response?.data?.error || '上传失败');
       } finally {
         faceUploading.value = false;
@@ -452,11 +507,13 @@ export default {
       showFaceUpload.value = false;
       currentChild.value = null;
       trainingStatus.value = null;
+      bindingCompleted.value = false; // 重置绑定状态
       clearFaceFiles();
     };
     
     const completeFaceUpload = () => {
       ElMessage.success('人脸识别训练完成，绑定流程已完成！');
+      bindingCompleted.value = true; // 设置绑定完成状态
       showFaceUpload.value = false;
       currentChild.value = null;
       trainingStatus.value = null;
@@ -489,6 +546,7 @@ export default {
       faceUploadRef,
       faceFileList,
       trainingStatus,
+      bindingCompleted,
       loadTrainingStatus,
       beforeFaceUpload,
       handleFaceFileChange,

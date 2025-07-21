@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { pool } = require('../config/database');
+const { pool, executeWithRetry } = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'kindergarten_secret_key_change_in_production';
 
@@ -20,8 +20,8 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     console.log('Token解码成功:', decoded);
     
-    // 从数据库获取用户信息
-    const [users] = await pool.execute(
+    // 从数据库获取用户信息（使用重试机制）
+    const users = await executeWithRetry(
       'SELECT id, username, role, full_name, class_id FROM users WHERE id = ?',
       [decoded.userId]
     );
@@ -38,6 +38,17 @@ const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Token验证失败:', error);
+    
+    // 根据错误类型返回不同的响应
+    if (error.message.includes('数据库连接失败') || 
+        error.code === 'ECONNRESET' || 
+        error.code === 'PROTOCOL_CONNECTION_LOST') {
+      return res.status(503).json({ 
+        error: '数据库连接暂时不可用，请稍后重试',
+        retryAfter: 5
+      });
+    }
+    
     return res.status(403).json({ error: '访问令牌无效' });
   }
 };

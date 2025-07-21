@@ -72,6 +72,10 @@
                 <el-icon><Camera /></el-icon>
                 <span>班级照片墙</span>
               </el-menu-item>
+              <el-menu-item index="/parent/honor">
+                <el-icon><Camera /></el-icon>
+                <span>荣誉墙</span>
+              </el-menu-item>
             </template>
           </el-menu>
         </el-aside>
