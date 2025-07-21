@@ -2,7 +2,19 @@
   <div class="public-photos-container">
     <div class="page-header">
       <h1>班级照片墙</h1>
-      <p>浏览班级的公共照片</p>
+      <p>浏览所有班级的公开照片</p>
+      <el-alert
+        title="提示"
+        type="info"
+        :closable="false"
+        style="margin-top: 15px;"
+      >
+        <template #default>
+          <p>• 您可以浏览所有班级的公开照片</p>
+          <p>• 绿色标签标记的是您孩子所在的班级</p>
+          <p>• 所有照片都是老师上传的公开内容</p>
+        </template>
+      </el-alert>
     </div>
     
     <!-- 控制栏 -->
@@ -48,11 +60,19 @@
           :key="album.class.id"
           class="class-album"
         >
-          <div class="class-header">
+          <div class="class-header" :class="{ 'parent-class': album.class.isParentClass }">
             <div class="class-info">
               <div class="class-title">
                 <h3>{{ album.class.name }}</h3>
                 <el-tag size="small" type="info">{{ album.class.student_count }} 人</el-tag>
+                <el-tag 
+                  v-if="album.class.isParentClass" 
+                  size="small" 
+                  type="success"
+                  style="margin-left: 8px;"
+                >
+                  我的孩子所在班级
+                </el-tag>
               </div>
               <div class="class-stats">
                 <el-tag size="small">共 {{ album.totalPhotos }} 张照片</el-tag>
@@ -426,6 +446,12 @@ export default {
   padding: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  position: relative;
+}
+
+.class-header.parent-class {
+  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
 }
 
 .class-info {

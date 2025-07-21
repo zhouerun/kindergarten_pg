@@ -694,7 +694,7 @@ router.get('/public-albums', authenticateToken, authorizeRole(['parent']), async
     
     console.log('获取公共照片集请求 - 参数:', { groupBy, parentId });
     
-    // 第1步：获取家长的孩子信息（用于过滤相关的班级）
+    // 第1步：获取家长的孩子信息（用于显示关联状态）
     const [parentChildren] = await pool.execute(`
       SELECT c.id, c.name, c.age, c.class_id, cl.name as class_name 
       FROM children c 
@@ -703,30 +703,24 @@ router.get('/public-albums', authenticateToken, authorizeRole(['parent']), async
       ORDER BY c.name
     `, [parentId]);
     
-    if (parentChildren.length === 0) {
-      console.log('家长没有关联的孩子，返回空结果');
-      return res.json({ albums: [] });
-    }
+    // 获取家长孩子所在的班级ID（用于标记关联状态）
+    const parentClassIds = [...new Set(parentChildren.map(child => child.class_id))];
+    console.log('家长孩子所在的班级:', parentClassIds);
     
-    // 获取相关班级的ID
-    const classIds = [...new Set(parentChildren.map(child => child.class_id))];
-    console.log('家长孩子所在的班级:', classIds);
-    
-    // 第2步：获取所有相关班级的信息
+    // 第2步：获取所有班级的信息（显示所有班级的公开照片）
     const [allClasses] = await pool.execute(`
       SELECT c.id, c.name, c.created_at,
              (SELECT COUNT(*) FROM children ch WHERE ch.class_id = c.id) as student_count
       FROM classes c 
-      WHERE c.id IN (${classIds.map(() => '?').join(',')})
       ORDER BY c.name
-    `, classIds);
+    `);
     
     if (allClasses.length === 0) {
-      console.log('没有找到相关班级，返回空结果');
+      console.log('没有找到任何班级，返回空结果');
       return res.json({ albums: [] });
     }
     
-    console.log('相关班级:', allClasses.map(c => c.name));
+    console.log('所有班级:', allClasses.map(c => c.name));
     
     // 第3步：获取每个班级的公共照片，按活动场景和时间分组
     const albums = [];
@@ -824,7 +818,8 @@ router.get('/public-albums', authenticateToken, authorizeRole(['parent']), async
         class: {
           id: classInfo.id,
           name: classInfo.name,
-          student_count: classInfo.student_count
+          student_count: classInfo.student_count,
+          isParentClass: parentClassIds.includes(classInfo.id) // 标记是否为家长孩子所在的班级
         },
         totalPhotos: classPhotos.length,
         activityGroups: activityTimeGroups
