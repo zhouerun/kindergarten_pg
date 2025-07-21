@@ -66,6 +66,16 @@
             <el-icon><User /></el-icon>
             孩子绑定管理
           </el-button>
+          
+          <el-button 
+            type="warning" 
+            size="large" 
+            @click="$router.push('/parent/honor')"
+            class="main-action-btn"
+          >
+            <el-icon><Trophy /></el-icon>
+            荣誉墙
+          </el-button>
         </div>
       </el-card>
     </div>
@@ -75,14 +85,15 @@
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import { FolderOpened, Camera, User } from '@element-plus/icons-vue';
+import { FolderOpened, Camera, User, Trophy } from '@element-plus/icons-vue';
 
 export default {
   name: 'ParentDashboard',
   components: {
     FolderOpened,
     Camera,
-    User
+    User,
+    Trophy
   },
   setup() {
     const store = useStore();

@@ -87,6 +87,12 @@ const routes = [
     component: () => import('../views/parent/PublicPhotos.vue'),
     meta: { requiresAuth: true, role: 'parent' }
   },
+  {
+    path: '/parent/honor',
+    name: 'ParentHonor',
+    component: () => import('../views/parent/HonorBoard.vue'),
+    meta: { requiresAuth: true, role: 'parent' }
+  },
 
   // 404页面
   {
