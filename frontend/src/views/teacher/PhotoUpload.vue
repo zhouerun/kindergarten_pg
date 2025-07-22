@@ -20,8 +20,8 @@
         
         <el-form-item label="照片类型">
           <el-radio-group v-model="uploadForm.isPublic">
-            <el-radio :label=0>公开照片</el-radio>
-            <el-radio :label=1>私密照片</el-radio>
+            <el-radio :label=1>公开照片</el-radio>
+            <el-radio :label=0>私密照片</el-radio>
           </el-radio-group>
         </el-form-item>
         
@@ -270,6 +270,7 @@ export default {
       { value: '自由活动', label: '自由活动' },
       { value: '节日庆祝', label: '节日庆祝' },
       { value: '生日聚会', label: '生日聚会' },
+      { value: '其他', label: '其他' },
       { value: '其他', label: '其他' }
     ]);
     

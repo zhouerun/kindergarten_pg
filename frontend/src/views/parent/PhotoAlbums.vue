@@ -2,12 +2,31 @@
   <div class="photo-albums-container">
     <div class="page-header">
       <h1>孩子照片</h1>
-      <p>按孩子和时间归纳的照片集合</p>
+      <p>按时间线查看孩子的成长记录</p>
     </div>
     
-    <!-- 控制栏 -->
+    <!-- 孩子切换控制栏 -->
     <el-card style="margin-bottom: 20px;">
-      <div class="controls">
+      <div class="child-selector">
+        <div class="child-tabs">
+          <el-button-group>
+            <el-button 
+              v-for="album in albums" 
+              :key="album.child.id"
+              :type="selectedChildId === album.child.id ? 'primary' : 'default'"
+              @click="selectChild(album.child.id)"
+            >
+              <el-avatar :size="24" class="child-avatar-small">
+                {{ album.child.name.charAt(0) }}
+              </el-avatar>
+              {{ album.child.name }}
+              <el-tag size="small" type="info" style="margin-left: 8px;">
+                {{ album.totalPhotos }}
+              </el-tag>
+            </el-button>
+          </el-button-group>
+        </div>
+        
         <div class="view-controls">
           <el-button-group>
             <el-button 
@@ -32,20 +51,21 @@
               按日分组
             </el-button>
           </el-button-group>
-        </div>
-        
-        <div class="display-controls">
-          <el-switch
-            v-model="showEmptyPeriods"
-            active-text="显示空时间段"
-            inactive-text="隐藏空时间段"
-          />
+          
+          <el-button 
+            type="success" 
+            @click="generateReport"
+            :disabled="!selectedChildAlbum || selectedChildAlbum.timeGroups.length === 0"
+          >
+            <el-icon><Document /></el-icon>
+            生成{{ groupBy === 'week' ? '周报' : groupBy === 'month' ? '月报' : '日报' }}
+          </el-button>
         </div>
       </div>
     </el-card>
     
-    <!-- 相册列表 -->
-    <div v-loading="loading" class="albums-container">
+    <!-- 时间线照片展示 -->
+    <div v-loading="loading" class="timeline-container">
       <div v-if="albums.length === 0 && !loading" class="empty-state">
         <el-empty description="暂无照片集">
           <el-button type="primary" @click="$router.push('/parent/public')">
@@ -54,109 +74,80 @@
         </el-empty>
       </div>
       
-      <div v-else>
-        <div v-for="album in albums" :key="album.child.id" class="child-album">
-          <div class="child-header">
-            <div class="child-info">
-              <el-avatar :size="40" class="child-avatar">
-                {{ album.child.name.charAt(0) }}
-              </el-avatar>
-              <div class="child-details">
-                <h3 class="child-name">{{ album.child.name }}</h3>
-                <p class="child-class">{{ album.child.class_name }}</p>
-                <p class="child-stats">共 {{ album.totalPhotos }} 张照片</p>
-              </div>
+      <div v-else-if="selectedChildId && selectedChildAlbum" class="timeline-view">
+        <div v-if="selectedChildAlbum.timeGroups.length === 0" class="empty-timeline">
+          <el-empty description="该孩子暂无照片" />
+        </div>
+        
+        <div v-else class="timeline">
+          <div 
+            v-for="(timeGroup, index) in selectedChildAlbum.timeGroups" 
+            :key="timeGroup.period"
+            class="timeline-item"
+          >
+            <!-- 时间线标记 -->
+            <div class="timeline-marker">
+              <div class="marker-dot"></div>
+              <div class="marker-line" v-if="index < selectedChildAlbum.timeGroups.length - 1"></div>
             </div>
             
-            <div class="child-actions">
-              <el-button 
-                :type="expandedChildren.includes(album.child.id) ? 'primary' : 'default'"
-                @click="toggleChild(album.child.id)"
-              >
-                <el-icon>
-                  <component :is="expandedChildren.includes(album.child.id) ? 'ArrowUp' : 'ArrowDown'" />
-                </el-icon>
-                {{ expandedChildren.includes(album.child.id) ? '收起' : '展开' }}
-              </el-button>
-            </div>
-          </div>
-          
-          <el-collapse-transition>
-            <div v-show="expandedChildren.includes(album.child.id)" class="time-groups">
-              <div v-if="album.timeGroups.length === 0" class="empty-time-groups">
-                <el-empty description="该孩子暂无照片" />
+            <!-- 时间组内容 -->
+            <div class="timeline-content">
+              <div class="time-header">
+                <div class="time-info">
+                  <el-icon><Calendar /></el-icon>
+                  <span class="time-period">{{ timeGroup.formattedPeriod }}</span>
+                  <el-tag size="small" type="info">{{ timeGroup.photoCount }} 张</el-tag>
+                </div>
               </div>
               
-              <div v-else>
+              <div class="photos-grid">
                 <div 
-                  v-for="timeGroup in album.timeGroups" 
-                  :key="timeGroup.period"
-                  class="time-group"
+                  v-for="photo in timeGroup.photos" 
+                  :key="photo.id"
+                  class="photo-item"
+                  @click="previewPhoto(photo, timeGroup.photos)"
                 >
-                  <div class="time-header">
-                    <div class="time-info">
-                      <el-icon><Calendar /></el-icon>
-                      <span class="time-period">{{ timeGroup.formattedPeriod }}</span>
-                      <el-tag size="small" type="info">{{ timeGroup.photoCount }} 张</el-tag>
+                  <img 
+                    :src="getImageUrl(photo.path)" 
+                    class="photo-image"
+                    alt="照片"
+                    @error="handleImageError"
+                  />
+                  
+                  <div class="photo-overlay">
+                    <div class="photo-info">
+                      <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
+                      <p class="photo-activity" v-if="photo.activity">
+                        <el-icon><Location /></el-icon>
+                        {{ photo.activity }}
+                      </p>
                     </div>
                     
-                    <div class="time-actions">
+                    <div class="photo-actions">
                       <el-button 
                         size="small"
-                        :type="expandedPeriods.includes(timeGroup.period) ? 'primary' : 'default'"
-                        @click="togglePeriod(timeGroup.period)"
+                        :type="photo.liked ? 'danger' : 'info'"
+                        :icon="photo.liked ? 'StarFilled' : 'Star'"
+                        @click.stop="toggleLike(photo)"
                       >
-                        <el-icon>
-                          <component :is="expandedPeriods.includes(timeGroup.period) ? 'ArrowUp' : 'ArrowDown'" />
-                        </el-icon>
-                        {{ expandedPeriods.includes(timeGroup.period) ? '收起' : '查看' }}
+                        {{ photo.like_count || 0 }}
                       </el-button>
                     </div>
                   </div>
-                  
-                  <el-collapse-transition>
-                    <div v-show="expandedPeriods.includes(timeGroup.period)" class="photos-grid">
-                      <div 
-                        v-for="photo in timeGroup.photos" 
-                        :key="photo.id"
-                        class="photo-item"
-                        @click="previewPhoto(photo, timeGroup.photos)"
-                      >
-                        <img 
-                          :src="getImageUrl(photo.path)" 
-                          class="photo-image"
-                          alt="照片"
-                          @error="handleImageError"
-                        />
-                        
-                        <div class="photo-overlay">
-                          <div class="photo-info">
-                            <p class="photo-date">{{ formatDate(photo.created_at) }}</p>
-                            <p class="photo-activity" v-if="photo.activity">
-                              <el-icon><Location /></el-icon>
-                              {{ photo.activity }}
-                            </p>
-                          </div>
-                          
-                          <div class="photo-actions">
-                            <el-button 
-                              size="small"
-                              :type="photo.liked ? 'danger' : 'info'"
-                              :icon="photo.liked ? 'StarFilled' : 'Star'"
-                              @click.stop="toggleLike(photo)"
-                            >
-                              {{ photo.like_count || 0 }}
-                            </el-button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </el-collapse-transition>
                 </div>
               </div>
             </div>
-          </el-collapse-transition>
+          </div>
         </div>
+      </div>
+      
+      <div v-else class="no-child-selected">
+        <el-empty description="请选择一个孩子查看照片">
+          <el-button type="primary" @click="selectFirstChild">
+            选择第一个孩子
+          </el-button>
+        </el-empty>
       </div>
     </div>
     
@@ -239,11 +230,160 @@
         </div>
       </template>
     </el-dialog>
+    
+    <!-- 周/月报预览对话框 -->
+    <el-dialog 
+      v-model="showReportDialog" 
+      :title="`${reportTitle} - ${selectedChildAlbum?.child?.name || ''}`"
+      width="95%"
+      center
+      append-to-body
+      class="report-dialog"
+    >
+      <div class="report-container" v-if="currentReport">
+        <!-- 报告头部 -->
+        <div class="report-header">
+          <div class="report-title">
+            <h1>{{ currentReport.title }}</h1>
+            <p class="report-subtitle">{{ currentReport.subtitle }}</p>
+          </div>
+          <div class="report-stats">
+            <div class="stat-item">
+              <span class="stat-number">{{ currentReport.totalPhotos }}</span>
+              <span class="stat-label">张照片</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">{{ currentReport.timeGroups.length }}</span>
+              <span class="stat-label">个时间段</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number">{{ currentReport.activities.length }}</span>
+              <span class="stat-label">种活动</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 活动场景分析 -->
+        <div class="report-section" v-if="currentReport.activities.length > 0">
+          <h2 class="section-title">
+            <el-icon><Location /></el-icon>
+            活动场景分析
+          </h2>
+          <div class="activities-grid">
+            <div 
+              v-for="activity in currentReport.activities" 
+              :key="activity.name"
+              class="activity-card"
+            >
+              <div class="activity-icon">
+                <el-icon><Picture /></el-icon>
+              </div>
+              <div class="activity-info">
+                <h3>{{ activity.name }}</h3>
+                <p>{{ activity.count }} 张照片</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 时间线回顾 -->
+        <div class="report-section">
+          <h2 class="section-title">
+            <el-icon><Calendar /></el-icon>
+            时间线回顾
+          </h2>
+          <div class="timeline-review">
+            <div 
+              v-for="(timeGroup, index) in currentReport.timeGroups" 
+              :key="timeGroup.period"
+              class="review-item"
+            >
+              <div class="review-marker">
+                <div class="review-dot"></div>
+                <div class="review-line" v-if="index < currentReport.timeGroups.length - 1"></div>
+              </div>
+              
+              <div class="review-content">
+                <div class="review-header">
+                  <h3>{{ timeGroup.formattedPeriod }}</h3>
+                  <span class="photo-count">{{ timeGroup.photoCount }} 张照片</span>
+                </div>
+                
+                <div class="review-photos">
+                  <div 
+                    v-for="photo in timeGroup.photos.slice(0, 4)" 
+                    :key="photo.id"
+                    class="review-photo"
+                    @click="previewPhoto(photo, timeGroup.photos)"
+                  >
+                    <img 
+                      :src="getImageUrl(photo.path)" 
+                      :alt="photo.activity || '照片'"
+                    />
+                    <div class="photo-overlay-mini">
+                      <span v-if="photo.activity">{{ photo.activity }}</span>
+                    </div>
+                  </div>
+                  <div 
+                    v-if="timeGroup.photos.length > 4" 
+                    class="more-photos"
+                    @click="previewPhoto(timeGroup.photos[4], timeGroup.photos)"
+                  >
+                    <span>+{{ timeGroup.photos.length - 4 }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 成长亮点 -->
+        <div class="report-section">
+          <h2 class="section-title">
+            <el-icon><Star /></el-icon>
+            成长亮点
+          </h2>
+          <div class="highlights">
+            <div class="highlight-item">
+              <div class="highlight-icon">📸</div>
+              <div class="highlight-content">
+                <h4>精彩瞬间</h4>
+                <p>记录了 {{ currentReport.totalPhotos }} 个美好时刻</p>
+              </div>
+            </div>
+            <div class="highlight-item">
+              <div class="highlight-icon">🎯</div>
+              <div class="highlight-content">
+                <h4>活动丰富</h4>
+                <p>参与了 {{ currentReport.activities.length }} 种不同的活动</p>
+              </div>
+            </div>
+            <div class="highlight-item">
+              <div class="highlight-icon">⏰</div>
+              <div class="highlight-content">
+                <h4>时间跨度</h4>
+                <p>跨越了 {{ currentReport.timeGroups.length }} 个时间段</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showReportDialog = false">关闭</el-button>
+          <el-button type="primary" @click="printReport">
+            <el-icon><Printer /></el-icon>
+            打印报告
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import { 
   Calendar, 
@@ -251,12 +391,12 @@ import {
   Sunrise, 
   Picture, 
   Location, 
-  ArrowUp, 
-  ArrowDown, 
   ArrowLeft, 
   ArrowRight,
   Star,
-  StarFilled
+  StarFilled,
+  Document,
+  Printer
 } from '@element-plus/icons-vue';
 import axios from 'axios';
 
@@ -268,26 +408,40 @@ export default {
     Sunrise,
     Picture,
     Location,
-    ArrowUp,
-    ArrowDown,
     ArrowLeft,
     ArrowRight,
     Star,
-    StarFilled
+    StarFilled,
+    Document,
+    Printer
   },
   setup() {
     const loading = ref(false);
     const albums = ref([]);
     const groupBy = ref('month');
-    const showEmptyPeriods = ref(false);
-    const expandedChildren = ref([]);
-    const expandedPeriods = ref([]);
+    const selectedChildId = ref(null);
     
     // 照片预览相关
     const showPreviewDialog = ref(false);
     const currentPreviewPhoto = ref(null);
     const previewPhotos = ref([]);
     const currentPreviewIndex = ref(0);
+    
+    // 周/月报相关
+    const showReportDialog = ref(false);
+    const currentReport = ref(null);
+    
+    // 计算报告标题
+    const reportTitle = computed(() => {
+      if (groupBy.value === 'week') return '周报';
+      if (groupBy.value === 'month') return '月报';
+      return '日报';
+    });
+    
+    // 计算当前选中的孩子相册
+    const selectedChildAlbum = computed(() => {
+      return albums.value.find(album => album.child.id === selectedChildId.value);
+    });
     
     const formatDate = (dateString) => {
       if (!dateString) return '';
@@ -316,8 +470,10 @@ export default {
         
         albums.value = response.data.albums;
         
-        // 默认展开所有孩子
-        expandedChildren.value = albums.value.map(album => album.child.id);
+        // 默认选择第一个孩子
+        if (albums.value.length > 0 && !selectedChildId.value) {
+          selectedChildId.value = albums.value[0].child.id;
+        }
         
         console.log('加载的相册数据:', albums.value);
       } catch (error) {
@@ -328,30 +484,67 @@ export default {
       }
     };
     
+    const selectChild = (childId) => {
+      selectedChildId.value = childId;
+    };
+    
+    const selectFirstChild = () => {
+      if (albums.value.length > 0) {
+        selectChild(albums.value[0].child.id);
+      }
+    };
+    
     const changeGroupBy = (newGroupBy) => {
       if (groupBy.value !== newGroupBy) {
         groupBy.value = newGroupBy;
-        expandedPeriods.value = []; // 重置展开状态
         loadAlbums();
       }
     };
     
-    const toggleChild = (childId) => {
-      const index = expandedChildren.value.indexOf(childId);
-      if (index > -1) {
-        expandedChildren.value.splice(index, 1);
-      } else {
-        expandedChildren.value.push(childId);
-      }
+    // 生成周/月报
+    const generateReport = () => {
+      if (!selectedChildAlbum.value) return;
+      
+      const album = selectedChildAlbum.value;
+      const child = album.child;
+      
+      // 统计活动类型
+      const activityMap = new Map();
+      let totalPhotos = 0;
+      
+      album.timeGroups.forEach(timeGroup => {
+        timeGroup.photos.forEach(photo => {
+          totalPhotos++;
+          if (photo.activity) {
+            activityMap.set(photo.activity, (activityMap.get(photo.activity) || 0) + 1);
+          }
+        });
+      });
+      
+      const activities = Array.from(activityMap.entries()).map(([name, count]) => ({
+        name,
+        count
+      })).sort((a, b) => b.count - a.count);
+      
+      // 生成报告标题
+      const now = new Date();
+      const title = `${child.name}的${reportTitle.value}`;
+      const subtitle = `生成时间：${now.toLocaleDateString('zh-CN')}`;
+      
+      currentReport.value = {
+        title,
+        subtitle,
+        totalPhotos,
+        timeGroups: album.timeGroups,
+        activities
+      };
+      
+      showReportDialog.value = true;
     };
     
-    const togglePeriod = (period) => {
-      const index = expandedPeriods.value.indexOf(period);
-      if (index > -1) {
-        expandedPeriods.value.splice(index, 1);
-      } else {
-        expandedPeriods.value.push(period);
-      }
+    // 打印报告
+    const printReport = () => {
+      window.print();
     };
     
     const previewPhoto = (photo, photos) => {
@@ -408,19 +601,23 @@ export default {
       loading,
       albums,
       groupBy,
-      showEmptyPeriods,
-      expandedChildren,
-      expandedPeriods,
+      selectedChildId,
+      selectedChildAlbum,
       showPreviewDialog,
       currentPreviewPhoto,
       previewPhotos,
       currentPreviewIndex,
+      showReportDialog,
+      currentReport,
+      reportTitle,
       formatDate,
       getImageUrl,
       handleImageError,
+      selectChild,
+      selectFirstChild,
       changeGroupBy,
-      toggleChild,
-      togglePeriod,
+      generateReport,
+      printReport,
       previewPhoto,
       prevPreviewPhoto,
       nextPreviewPhoto,
@@ -450,7 +647,7 @@ export default {
   font-size: 14px;
 }
 
-.controls {
+.child-selector {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -458,60 +655,71 @@ export default {
   gap: 20px;
 }
 
-.child-album {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  overflow: hidden;
+.child-tabs {
+  flex: 1;
 }
 
-.child-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.child-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.child-avatar {
+.child-avatar-small {
+  margin-right: 8px;
   background: rgba(255, 255, 255, 0.2);
   color: white;
   font-weight: bold;
 }
 
-.child-details h3 {
-  margin: 0 0 5px 0;
-  font-size: 18px;
+.timeline-container {
+  min-height: 400px;
 }
 
-.child-details p {
-  margin: 0;
-  font-size: 14px;
-  opacity: 0.9;
+.timeline-view {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.child-stats {
-  font-weight: 500;
+.timeline {
+  position: relative;
+  padding-left: 30px;
 }
 
-.time-groups {
-  padding: 20px;
-  background: #f8f9fa;
+.timeline-item {
+  position: relative;
+  margin-bottom: 30px;
+  display: flex;
 }
 
-.time-group {
+.timeline-marker {
+  position: absolute;
+  left: -30px;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20px;
+}
+
+.marker-dot {
+  width: 16px;
+  height: 16px;
+  background: #409EFF;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 0 0 3px #E4E7ED;
+  z-index: 2;
+}
+
+.marker-line {
+  width: 2px;
+  height: 100%;
+  background: #E4E7ED;
+  margin-top: 8px;
+  min-height: 30px;
+}
+
+.timeline-content {
+  flex: 1;
   background: white;
   border-radius: 8px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 .time-header {
@@ -599,25 +807,11 @@ export default {
   justify-content: flex-end;
 }
 
-.image-error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background: #f5f5f5;
-  color: #c0c4cc;
-  font-size: 24px;
-}
-
-.empty-state {
+.empty-state,
+.empty-timeline,
+.no-child-selected {
   text-align: center;
   padding: 40px;
-}
-
-.empty-time-groups {
-  text-align: center;
-  padding: 20px;
 }
 
 /* 预览对话框样式 */
@@ -688,20 +882,21 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .controls {
+  .child-selector {
     flex-direction: column;
     align-items: stretch;
   }
   
-  .child-header {
-    flex-direction: column;
-    gap: 15px;
-    text-align: center;
+  .child-tabs {
+    overflow-x: auto;
   }
   
-  .child-info {
-    flex-direction: column;
-    text-align: center;
+  .timeline {
+    padding-left: 20px;
+  }
+  
+  .timeline-marker {
+    left: -20px;
   }
   
   .photos-grid {
@@ -725,6 +920,341 @@ export default {
   .preview-navigation {
     flex-direction: column;
     gap: 10px;
+  }
+}
+
+/* 周/月报样式 */
+.report-dialog {
+  .el-dialog__body {
+    padding: 0;
+  }
+}
+
+.report-container {
+  padding: 30px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 80vh;
+}
+
+.report-header {
+  text-align: center;
+  margin-bottom: 40px;
+  padding: 30px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.report-title h1 {
+  color: #2c3e50;
+  font-size: 2.5em;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.report-subtitle {
+  color: #7f8c8d;
+  font-size: 1.1em;
+  margin-bottom: 30px;
+}
+
+.report-stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  min-width: 120px;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+
+.report-section {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #2c3e50;
+  font-size: 1.5em;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.activities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.activity-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border-left: 4px solid #3498db;
+  transition: transform 0.2s ease;
+}
+
+.activity-card:hover {
+  transform: translateY(-2px);
+}
+
+.activity-icon {
+  width: 50px;
+  height: 50px;
+  background: #3498db;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.2em;
+}
+
+.activity-info h3 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 1.1em;
+}
+
+.activity-info p {
+  margin: 0;
+  color: #7f8c8d;
+  font-size: 0.9em;
+}
+
+.timeline-review {
+  position: relative;
+  padding-left: 30px;
+}
+
+.review-item {
+  position: relative;
+  margin-bottom: 30px;
+  display: flex;
+}
+
+.review-marker {
+  position: absolute;
+  left: -30px;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 20px;
+}
+
+.review-dot {
+  width: 16px;
+  height: 16px;
+  background: #e74c3c;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 0 0 3px #ecf0f1;
+  z-index: 2;
+}
+
+.review-line {
+  width: 2px;
+  height: 100%;
+  background: #ecf0f1;
+  margin-top: 8px;
+  min-height: 30px;
+}
+
+.review-content {
+  flex: 1;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.review-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.2em;
+}
+
+.photo-count {
+  background: #3498db;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.9em;
+}
+
+.review-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+}
+
+.review-photo {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 1;
+}
+
+.review-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-overlay-mini {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  color: white;
+  padding: 5px;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.more-photos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ecf0f1;
+  border-radius: 8px;
+  cursor: pointer;
+  aspect-ratio: 1;
+  font-weight: bold;
+  color: #7f8c8d;
+  transition: background-color 0.2s ease;
+}
+
+.more-photos:hover {
+  background: #bdc3c7;
+}
+
+.highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.highlight-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+  color: white;
+  border-radius: 12px;
+}
+
+.highlight-icon {
+  font-size: 2em;
+  width: 60px;
+  text-align: center;
+}
+
+.highlight-content h4 {
+  margin: 0 0 5px 0;
+  font-size: 1.2em;
+}
+
+.highlight-content p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.9em;
+}
+
+/* 打印样式 */
+@media print {
+  .report-container {
+    background: white !important;
+    padding: 20px !important;
+  }
+  
+  .report-header,
+  .report-section {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  .activity-card,
+  .highlight-item {
+    break-inside: avoid;
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .report-container {
+    padding: 15px;
+  }
+  
+  .report-title h1 {
+    font-size: 1.8em;
+  }
+  
+  .report-stats {
+    gap: 20px;
+  }
+  
+  .stat-item {
+    min-width: 100px;
+    padding: 15px;
+  }
+  
+  .activities-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .timeline-review {
+    padding-left: 20px;
+  }
+  
+  .review-marker {
+    left: -20px;
+  }
+  
+  .review-photos {
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  }
+  
+  .highlights {
+    grid-template-columns: 1fr;
   }
 }
 </style> 
