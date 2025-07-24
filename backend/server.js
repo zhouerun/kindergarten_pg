@@ -15,10 +15,52 @@ const mockFaceRecognitionRoutes = require('./routes/mockFaceRecognition');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// 定义允许的源
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://127.0.0.1:8080'
+];
+
+// 添加环境变量配置的源
+if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+// 检查是否为本地网络IP的函数
+function isLocalNetwork(origin) {
+  if (!origin) return false;
+  
+  // 检查是否为本地网络IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+  const localNetworkPatterns = [
+    /^http:\/\/192\.168\.\d+\.\d+:8080$/,
+    /^http:\/\/10\.\d+\.\d+\.\d+:8080$/,
+    /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:8080$/
+  ];
+  
+  return localNetworkPatterns.some(pattern => pattern.test(origin));
+}
+
 // 安全中间件
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:8080',
+  origin: function (origin, callback) {
+    // 允许没有origin的请求（比如同源请求）
+    if (!origin) return callback(null, true);
+    
+    // 检查是否在允许列表中
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    }
+    
+    // 检查是否为本地网络
+    if (isLocalNetwork(origin)) {
+      console.log('允许本地网络访问:', origin);
+      return callback(null, true);
+    }
+    
+    console.log('CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -45,7 +87,10 @@ if (!fs.existsSync(uploadsDir)) {
 
 // 为静态文件添加CORS头
 app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:8080');
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || isLocalNetwork(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Methods', 'GET');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   next();
@@ -81,6 +126,7 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`服务器运行在端口 ${PORT}`);
   console.log(`环境: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`允许的CORS源: ${allowedOrigins.length} 个 + 本地网络`);
 });
 
 module.exports = app; 

@@ -7,7 +7,7 @@
 ### 服务器信息
 - **IP地址**: 192.168.5.25
 - **端口**: 5000
-- **完整API地址**: http://192.168.5.25:5000/database/add_child
+- **完整API地址**: http://192.168.5.61:5000/database/add_child
 
 ### 配置步骤
 
@@ -20,7 +20,7 @@ cp config/env.template .env
 2. **编辑 .env 文件，设置远端API地址**
 ```bash
 # 远端人脸识别训练API配置
-REMOTE_TRAINING_API=http://192.168.5.25:5000/database/add_child
+REMOTE_TRAINING_API=http://192.168.5.61:5000/database/add_child
 REMOTE_API_TIMEOUT=60000
 REMOTE_API_MAX_RETRIES=3
 ```
@@ -39,7 +39,7 @@ npm start
     ↓ POST /api/mock-face-recognition/database/add_child
 Node.js 后端 (代理层)
     ↓ 处理认证、验证、格式转换
-    ↓ POST http://192.168.5.25:5000/database/add_child
+    ↓ POST http://192.168.5.61:5000/database/add_child
 远端Python服务器 (start_system.py)
 ```
 

@@ -93,7 +93,7 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User, Lock, Phone } from '@element-plus/icons-vue';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'RegisterPage',
@@ -152,7 +152,7 @@ export default {
         
         loading.value = true;
         
-        await axios.post('/auth/register', {
+        await api.post('/auth/register', {
           username: registerData.username,
           password: registerData.password,
           role: registerData.role,

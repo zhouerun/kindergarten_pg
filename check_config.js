@@ -45,7 +45,7 @@ if (fs.existsSync(envPath)) {
                 console.log('✅ 远端API地址配置正确');
             } else {
                 console.log('❌ 远端API地址配置错误');
-                console.log('   应该是: REMOTE_TRAINING_API=http://192.168.5.25:5000/database/add_child');
+                console.log('   应该是: REMOTE_TRAINING_API=http://192.168.5.61:5000/database/add_child');
             }
         } else {
             console.log('❌ 未找到 REMOTE_TRAINING_API 配置');
@@ -79,7 +79,7 @@ console.log(`   REMOTE_TRAINING_API: ${process.env.REMOTE_TRAINING_API || '未�
 console.log(`   REMOTE_API_TIMEOUT: ${process.env.REMOTE_API_TIMEOUT || '未设置'}`);
 console.log(`   REMOTE_API_MAX_RETRIES: ${process.env.REMOTE_API_MAX_RETRIES || '未设置'}`);
 
-const expectedApi = 'http://192.168.5.25:5000/database/add_child';
+const expectedApi = 'http://192.168.5.61:5000/database/add_child';
 if (process.env.REMOTE_TRAINING_API === expectedApi) {
     console.log('✅ 环境变量配置正确');
 } else {
@@ -103,7 +103,7 @@ if (axios) {
     axios.then(axiosLib => {
         // 检查远端服务器连接
         console.log('🔗 测试远端服务器连接...');
-        return axiosLib.get('http://192.168.5.25:5000/health', { timeout: 5000 });
+        return axiosLib.get('http://192.168.5.61:5000/health', { timeout: 5000 });
     }).then(response => {
         console.log('✅ 远端服务器连接正常');
         console.log(`   状态码: ${response.status}`);
@@ -126,7 +126,7 @@ function printSummary() {
     console.log();
     console.log('📋 配置摘要:');
     console.log('=====================================');
-    console.log('1. 远端API地址: http://192.168.5.25:5000/database/add_child');
+    console.log('1. 远端API地址: http://192.168.5.61:5000/database/add_child');
     console.log('2. 代码默认值已更新');
     console.log('3. 请确保 .env 文件配置正确');
     console.log('4. 重启后端服务以加载新配置');

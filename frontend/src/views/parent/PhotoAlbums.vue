@@ -398,7 +398,7 @@ import {
   Document,
   Printer
 } from '@element-plus/icons-vue';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'PhotoAlbums',
@@ -462,7 +462,7 @@ export default {
     const loadAlbums = async () => {
       loading.value = true;
       try {
-        const response = await axios.get('/photos/albums', {
+        const response = await api.get('/photos/albums', {
           params: {
             groupBy: groupBy.value
           }
@@ -570,7 +570,7 @@ export default {
     
     const toggleLike = async (photo) => {
       try {
-        const response = await axios.post('/photos/like', {
+        const response = await api.post('/photos/like', {
           photoId: photo.id
         });
         

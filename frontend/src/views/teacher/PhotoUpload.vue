@@ -56,7 +56,7 @@
             </div>
             <template #tip>
               <div class="el-upload__tip">
-                只能上传 JPG、JPEG、PNG、BMP、TIFF、WEBP 文件，且不超过10MB
+                支持 JPG、JPEG、PNG、BMP、TIFF、WEBP 格式，最大50MB，大于3MB的图片将自动压缩
               </div>
             </template>
           </el-upload>
@@ -231,7 +231,8 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useStore } from 'vuex';
 import { ElMessage } from 'element-plus';
 import { Plus, Delete, ZoomIn, ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
-import axios from 'axios';
+import api from '@/utils/axios';
+import { compressImage, formatFileSize } from '@/utils/imageCompression';
 
 export default {
   name: 'PhotoUpload',
@@ -291,7 +292,7 @@ export default {
     
     const loadClasses = async () => {
       try {
-        const response = await axios.get('/classes');
+        const response = await api.get('/classes');
         classes.value = response.data;
         
         // 默认选择第一个班级
@@ -303,8 +304,8 @@ export default {
       }
     };
     
-    const beforeUpload = (file) => {
-      console.log(file);
+    const beforeUpload = async (file) => {
+      console.log('原始文件:', file);
       
       // 允许的图片类型（MIME类型）
       const allowedTypes = [
@@ -316,16 +317,39 @@ export default {
       ];
       
       const isValidImage = allowedTypes.includes(file.type);
-      const isLt10M = file.size / 1024 / 1024 < 10;
+      const fileSizeMB = file.size / 1024 / 1024;
+      const maxOriginalSizeMB = 50; // 最大支持50MB
       
       if (!isValidImage) {
         ElMessage.error('只能上传 JPG、JPEG、PNG、BMP、TIFF、WEBP 格式的图片!');
         return false;
       }
-      if (!isLt10M) {
-        ElMessage.error('上传图片大小不能超过 10MB!');
+      
+      if (fileSizeMB > maxOriginalSizeMB) {
+        ElMessage.error(`上传图片大小不能超过 ${maxOriginalSizeMB}MB!`);
         return false;
       }
+      
+      // 如果文件大于3MB，进行压缩
+      if (fileSizeMB > 3) {
+        try {
+          ElMessage.info(`正在压缩图片: ${file.name} (${fileSizeMB.toFixed(2)}MB)`);
+          const compressedFile = await compressImage(file, 3, maxOriginalSizeMB);
+          
+          // 替换原文件
+          file.raw = compressedFile;
+          file.size = compressedFile.size;
+          
+          const compressedSizeMB = compressedFile.size / 1024 / 1024;
+          ElMessage.success(`图片压缩完成: ${fileSizeMB.toFixed(2)}MB → ${compressedSizeMB.toFixed(2)}MB`);
+          
+          console.log('压缩后的文件:', compressedFile);
+        } catch (error) {
+          console.error('图片压缩失败:', error);
+          ElMessage.warning(`图片压缩失败，将使用原文件: ${error.message}`);
+        }
+      }
+      
       return true;
     };
     
@@ -369,7 +393,7 @@ export default {
         console.log('开始上传，文件数量:', fileList.value.length, '上传表单数据:', uploadForm);
         
         // 发送上传请求到本地代理服务（解决跨域问题）
-        const response = await axios.post('/photos/batch-recognize', payload, {
+        const response = await api.post('/photos/batch-recognize', payload, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${store.state.token}`
@@ -486,13 +510,7 @@ export default {
       return '';
     };
     
-    const formatFileSize = (bytes) => {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
+
     
     const formatDate = (timestamp) => {
       if (!timestamp) return '';

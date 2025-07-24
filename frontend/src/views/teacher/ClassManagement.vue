@@ -108,7 +108,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'ClassManagement',
@@ -157,7 +157,7 @@ export default {
     const loadStudents = async () => {
       loading.value = true;
       try {
-        const response = await axios.get('/classes/students');
+        const response = await api.get('/classes/students');
         students.value = response.data;
       } catch (error) {
         ElMessage.error('加载学生列表失败');
@@ -168,7 +168,7 @@ export default {
     
     const loadClasses = async () => {
       try {
-        const response = await axios.get('/classes');
+        const response = await api.get('/classes');
         classes.value = response.data;
       } catch (error) {
         ElMessage.error('加载班级列表失败');
@@ -198,7 +198,7 @@ export default {
           }
         );
         
-        await axios.delete(`/classes/students/${student.id}`);
+        await api.delete(`/classes/students/${student.id}`);
         ElMessage.success('删除成功');
         loadStudents();
       } catch (error) {
@@ -217,7 +217,7 @@ export default {
         
         if (editingStudent.value) {
           // 编辑
-          await axios.put(`/classes/students/${editingStudent.value.id}`, {
+          await api.put(`/classes/students/${editingStudent.value.id}`, {
             name: studentFormData.name,
             student_number: studentFormData.studentNumber,
             age: studentFormData.age,
@@ -226,7 +226,7 @@ export default {
           ElMessage.success('编辑成功');
         } else {
           // 添加
-          await axios.post('/classes/students', {
+          await api.post('/classes/students', {
             name: studentFormData.name,
             student_number: studentFormData.studentNumber,
             age: studentFormData.age,

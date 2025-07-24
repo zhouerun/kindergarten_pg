@@ -7,7 +7,7 @@ echo.
 
 echo 📋 问题分析:
 echo    系统仍在使用旧地址: http://localhost:8001/api/train
-echo    应该使用新地址: http://192.168.5.25:5000/database/add_child
+echo    应该使用新地址: http://192.168.5.61:5000/database/add_child
 echo.
 
 if not exist "kindergarten_pg\backend" (
@@ -37,7 +37,7 @@ if not exist ".env" (
 )
 
 echo 2. 更新远端API地址...
-powershell -Command "(gc .env) -replace 'REMOTE_TRAINING_API=.*', 'REMOTE_TRAINING_API=http://192.168.5.25:5000/database/add_child' | Out-File -encoding UTF8 .env"
+powershell -Command "(gc .env) -replace 'REMOTE_TRAINING_API=.*', 'REMOTE_TRAINING_API=http://192.168.5.61:5000/database/add_child' | Out-File -encoding UTF8 .env"
 
 echo 3. 验证配置...
 findstr "REMOTE_TRAINING_API" .env

@@ -1,11 +1,5 @@
 import { createStore } from 'vuex';
-import axios from 'axios';
-
-const API_BASE_URL = process.env.VUE_APP_API_URL || 'http://localhost:3000/api';
-
-// 配置axios
-axios.defaults.baseURL = API_BASE_URL;
-axios.defaults.withCredentials = true;
+import api from '../utils/axios';
 
 // 创建store
 const store = createStore({
@@ -23,10 +17,10 @@ const store = createStore({
       state.token = token;
       if (token) {
         localStorage.setItem('token', token);
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       } else {
         localStorage.removeItem('token');
-        delete axios.defaults.headers.common['Authorization'];
+        delete api.defaults.headers.common['Authorization'];
       }
     },
     
@@ -66,7 +60,9 @@ const store = createStore({
         commit('SET_LOADING', true);
         commit('SET_ERROR', null);
         
-        const response = await axios.post('/auth/login', credentials);
+        console.log('尝试登录，API地址:', api.defaults.baseURL);
+        
+        const response = await api.post('/auth/login', credentials);
         const { token, user } = response.data;
         
         commit('SET_TOKEN', token);
@@ -87,7 +83,7 @@ const store = createStore({
         commit('SET_LOADING', true);
         commit('SET_ERROR', null);
         
-        const response = await axios.post('/auth/register', userData);
+        const response = await api.post('/auth/register', userData);
         return response.data;
       } catch (error) {
         const message = error.response?.data?.error || '注册失败';
@@ -108,7 +104,7 @@ const store = createStore({
     
     async fetchUserProfile({ commit }) {
       try {
-        const response = await axios.get('/users/profile');
+        const response = await api.get('/users/profile');
         commit('SET_USER', response.data);
         return response.data;
       } catch (error) {
@@ -118,7 +114,7 @@ const store = createStore({
     
     async fetchClasses({ commit }) {
       try {
-        const response = await axios.get('/classes');
+        const response = await api.get('/classes');
         commit('SET_CLASSES', response.data);
         return response.data;
       } catch (error) {
@@ -128,7 +124,7 @@ const store = createStore({
     
     async fetchPublicPhotos({ commit }, params = {}) {
       try {
-        const response = await axios.get('/photos/public', { params });
+        const response = await api.get('/photos/public', { params });
         commit('SET_PHOTOS', response.data.photos);
         return response.data;
       } catch (error) {
@@ -138,7 +134,7 @@ const store = createStore({
     
     async fetchPrivatePhotos({ commit }, params = {}) {
       try {
-        const response = await axios.get('/photos/private', { params });
+        const response = await api.get('/photos/private', { params });
         commit('SET_PHOTOS', response.data.photos);
         return response.data;
       } catch (error) {
@@ -149,7 +145,7 @@ const store = createStore({
     async uploadPhotos({ commit }, formData) {
       try {
         commit('SET_LOADING', true);
-        const response = await axios.post('/photos', formData, {
+        const response = await api.post('/photos', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -164,7 +160,7 @@ const store = createStore({
     
     async likePhoto(_, photoId) {
       try {
-        const response = await axios.post('/photos/like', { photoId });
+        const response = await api.post('/photos/like', { photoId });
         return response.data;
       } catch (error) {
         throw new Error(error.response?.data?.error || '点赞失败');
@@ -173,7 +169,7 @@ const store = createStore({
     
     async searchPhotos({ commit }, query) {
       try {
-        const response = await axios.get('/photos/search', { params: { query } });
+        const response = await api.get('/photos/search', { params: { query } });
         commit('SET_PHOTOS', response.data.photos);
         return response.data;
       } catch (error) {
@@ -183,7 +179,7 @@ const store = createStore({
     
     async fetchUsers({ commit }, params = {}) {
       try {
-        const response = await axios.get('/users', { params });
+        const response = await api.get('/users', { params });
         commit('SET_USERS', response.data);
         return response.data;
       } catch (error) {
@@ -205,9 +201,9 @@ const store = createStore({
   }
 });
 
-// 如果有token，初始化时设置
+// 如果有token，初始化时设�?
 if (store.state.token) {
-  axios.defaults.headers.common['Authorization'] = `Bearer ${store.state.token}`;
+  api.defaults.headers.common['Authorization'] = `Bearer ${store.state.token}`;
 }
 
 export default store; 

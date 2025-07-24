@@ -31,7 +31,7 @@ const dbConfig = {
 };
 
 // 远端训练API配置
-const REMOTE_TRAINING_API = process.env.REMOTE_TRAINING_API || 'http://192.168.5.25:5000/database/add_child';
+const REMOTE_TRAINING_API = process.env.REMOTE_TRAINING_API || 'http://192.168.5.61:5000/database/add_child';
 const REMOTE_API_TIMEOUT = parseInt(process.env.REMOTE_API_TIMEOUT) || 60000;
 const REMOTE_API_MAX_RETRIES = parseInt(process.env.REMOTE_API_MAX_RETRIES) || 3;
 

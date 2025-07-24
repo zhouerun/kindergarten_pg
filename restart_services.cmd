@@ -23,6 +23,6 @@ echo 5. 观察网络请求是否发送到正确的远端API
 echo.
 echo 🌐 期望的网络请求:
 echo   前端 -> http://localhost:3000/api/mock-face-recognition/database/add_child
-echo   后端 -> http://192.168.5.25:5000/database/add_child
+echo   后端 -> http://192.168.5.61:5000/database/add_child
 echo.
 pause 

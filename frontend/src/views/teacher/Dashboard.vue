@@ -168,7 +168,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'TeacherDashboard',
@@ -190,16 +190,16 @@ export default {
       try {
         if (userInfo.value.class_id) {
           // 获取班级信息
-          const classResponse = await axios.get(`/classes/${userInfo.value.class_id}`);
+          const classResponse = await api.get(`/classes/${userInfo.value.class_id}`);
           classInfo.value = classResponse.data;
           
           // 获取最近的学生
-          const studentsResponse = await axios.get(`/classes/${userInfo.value.class_id}/children`);
+                      const studentsResponse = await api.get(`/classes/${userInfo.value.class_id}/children`);
           recentStudents.value = studentsResponse.data.slice(0, 5);
         }
         
         // 获取家长用户数量
-        const usersResponse = await axios.get('/users?role=parent');
+                  const usersResponse = await api.get('/users?role=parent');
         parentCount.value = usersResponse.data.length;
         
         // 模拟今日上传数量

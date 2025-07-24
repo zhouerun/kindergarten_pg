@@ -211,7 +211,7 @@
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'PublicPhotos',
@@ -258,7 +258,7 @@ export default {
     
     const toggleLike = async (photo) => {
       try {
-        await axios.post('/photos/like', {
+        await api.post('/photos/like', {
           photoId: photo.id
         });
         
@@ -289,7 +289,7 @@ export default {
     // 加载孩子信息
     const loadChildren = async () => {
       try {
-        const response = await axios.get('/classes/students');
+        const response = await api.get('/classes/students');
         children.value = response.data;
       } catch (error) {
         console.error('加载学生列表失败');
@@ -300,7 +300,7 @@ export default {
     const loadAlbums = async () => {
       albumsLoading.value = true;
       try {
-        const response = await axios.get('/photos/public-albums', {
+        const response = await api.get('/photos/public-albums', {
           params: {
             groupBy: groupBy.value
           }

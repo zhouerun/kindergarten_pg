@@ -42,10 +42,10 @@ echo.
 echo 🔧 更新远端API配置...
 
 rem 更新.env文件中的远端API地址
-powershell -Command "(gc .env) -replace 'REMOTE_TRAINING_API=.*', 'REMOTE_TRAINING_API=http://192.168.5.25:5000/database/add_child' | Out-File -encoding UTF8 .env"
+powershell -Command "(gc .env) -replace 'REMOTE_TRAINING_API=.*', 'REMOTE_TRAINING_API=http://192.168.5.61:5000/database/add_child' | Out-File -encoding UTF8 .env"
 
 if %ERRORLEVEL% EQU 0 (
-    echo ✅ 远端API地址已更新为: http://192.168.5.25:5000/database/add_child
+    echo ✅ 远端API地址已更新为: http://192.168.5.61:5000/database/add_child
 ) else (
     echo ⚠️  手动更新失败，请手动编辑 .env 文件
 )

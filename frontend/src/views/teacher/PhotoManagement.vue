@@ -271,7 +271,7 @@ import {
   View,
   Hide
 } from '@element-plus/icons-vue';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'PhotoManagement',
@@ -324,7 +324,7 @@ export default {
     const loadAlbums = async () => {
       loading.value = true;
       try {
-        const response = await axios.get('/photos/teacher-albums', {
+        const response = await api.get('/photos/teacher-albums', {
           params: {
             groupBy: groupBy.value
           }

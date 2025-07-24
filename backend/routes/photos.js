@@ -34,7 +34,7 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
+    fileSize: 50 * 1024 * 1024 // 50MB (支持压缩前的原始文件大小)
   },
   fileFilter: function (req, file, cb) {
     const allowedTypes = ['image/jpg','image/jpeg','image/png','image/bmp','image/tiff','image/webp'];
@@ -851,7 +851,7 @@ router.post('/batch-recognize', authenticateToken, authorizeRole(['teacher']), a
     }
     
     // 远端服务配置
-    const REMOTE_BATCH_RECOGNIZE_API = process.env.REMOTE_BATCH_RECOGNIZE_API || 'http://192.168.5.25:5000/batch_recognize';
+    const REMOTE_BATCH_RECOGNIZE_API = process.env.REMOTE_BATCH_RECOGNIZE_API || 'http://192.168.5.61:5000/batch_recognize';
     const REMOTE_API_TIMEOUT = parseInt(process.env.REMOTE_API_TIMEOUT) || 60000;
     
     console.log('转发请求到远端服务:', REMOTE_BATCH_RECOGNIZE_API);

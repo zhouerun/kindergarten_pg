@@ -44,13 +44,13 @@ console.log('最终处理路径: /database/add_child');
 
 console.log('\n🌐 远端API流程');
 console.log('====================');
-console.log('Node.js代理 -> http://192.168.5.25:5000/database/add_child');
+console.log('Node.js代理 -> http://192.168.5.61:5000/database/add_child');
 
 console.log('\n✅ 修正完成');
 console.log('====================');
 console.log('问题: 重复的/api/路径导致URL变成 3000/api/api/mock-face-recognition/...');
 console.log('解决: 已将前端API调用路径从 /api/mock-face-recognition/... 改为 /mock-face-recognition/...');
-console.log('结果: 现在请求正确地发送到 http://192.168.5.25:5000/database/add_child');
+console.log('结果: 现在请求正确地发送到 http://192.168.5.61:5000/database/add_child');
 
 // 检查是否还有其他API路径问题
 const childBindingFile = path.join(__dirname, 'frontend/src/views/parent/ChildBinding.vue');

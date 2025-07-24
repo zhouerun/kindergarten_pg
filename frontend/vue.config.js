@@ -6,6 +6,7 @@ module.exports = defineConfig({
   // 开发服务器配置
   devServer: {
     port: 8080,
+    host: '0.0.0.0', // 允许外部IP访问
     open: true,
     proxy: {
       '/api': {
@@ -20,6 +21,16 @@ module.exports = defineConfig({
         secure: false,
         logLevel: 'debug'
       }
+    },
+    // 允许外部访问
+    allowedHosts: 'all',
+    // 禁用主机检查
+    historyApiFallback: true,
+    // 添加CORS头
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization'
     }
   },
   

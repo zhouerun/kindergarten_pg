@@ -9,7 +9,7 @@
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-icon><User /></el-icon>
-              {{ userInfo.full_name }}
+              <span class="user-name">{{ userInfo.full_name }}</span>
               <el-icon class="el-icon--right"><arrow-down /></el-icon>
             </span>
             <template #dropdown>
@@ -23,7 +23,7 @@
       </el-header>
 
       <el-container>
-        <el-aside v-if="isAuthenticated" class="sidebar" width="200px">
+        <el-aside v-if="isAuthenticated" class="sidebar" :width="sidebarWidth">
           <el-menu
             :default-active="$route.path"
             class="sidebar-menu"
@@ -31,6 +31,7 @@
             background-color="#545c64"
             text-color="#fff"
             active-text-color="#ffd04b"
+            :collapse="isCollapse"
           >
             <template v-if="userInfo.role === 'teacher'">
               <el-menu-item index="/teacher">
@@ -89,7 +90,7 @@
 </template>
 
 <script>
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
 import { Link } from '@element-plus/icons-vue';
@@ -102,9 +103,18 @@ export default {
   setup() {
     const store = useStore();
     const router = useRouter();
+    const isCollapse = ref(false);
 
     const isAuthenticated = computed(() => store.getters.isAuthenticated);
     const userInfo = computed(() => store.getters.userInfo);
+
+    const sidebarWidth = computed(() => {
+      return isCollapse.value ? '64px' : '200px';
+    });
+
+    const checkScreenSize = () => {
+      isCollapse.value = window.innerWidth <= 768;
+    };
 
     const handleCommand = (command) => {
       switch (command) {
@@ -118,9 +128,20 @@ export default {
       }
     };
 
+    onMounted(() => {
+      checkScreenSize();
+      window.addEventListener('resize', checkScreenSize);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkScreenSize);
+    });
+
     return {
       isAuthenticated,
       userInfo,
+      isCollapse,
+      sidebarWidth,
       handleCommand
     };
   }
@@ -147,11 +168,12 @@ export default {
   align-items: center;
   background-color: #409eff;
   color: white;
-  padding: 0 20px;
+  padding: 0 15px;
+  height: 60px;
 }
 
 .logo {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
 }
 
@@ -160,6 +182,14 @@ export default {
   align-items: center;
   cursor: pointer;
   color: white;
+  gap: 5px;
+}
+
+.user-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-info:hover {
@@ -168,6 +198,7 @@ export default {
 
 .sidebar {
   background-color: #545c64;
+  transition: width 0.3s;
 }
 
 .sidebar-menu {
@@ -178,5 +209,68 @@ export default {
 .main-content {
   background-color: #f5f5f5;
   min-height: calc(100vh - 60px);
+  padding: 0;
+}
+
+/* 手机端适配 */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 10px;
+    height: 50px;
+  }
+  
+  .logo {
+    font-size: 16px;
+  }
+  
+  .user-name {
+    max-width: 80px;
+    font-size: 14px;
+  }
+  
+  .sidebar {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    height: calc(100vh - 50px);
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+  }
+  
+  .sidebar.show {
+    transform: translateX(0);
+  }
+  
+  .main-content {
+    min-height: calc(100vh - 50px);
+    margin-left: 0;
+  }
+}
+
+/* 小屏手机适配 */
+@media (max-width: 480px) {
+  .header {
+    padding: 0 8px;
+    height: 45px;
+  }
+  
+  .logo {
+    font-size: 14px;
+  }
+  
+  .user-name {
+    max-width: 60px;
+    font-size: 12px;
+  }
+  
+  .sidebar {
+    top: 45px;
+    height: calc(100vh - 45px);
+  }
+  
+  .main-content {
+    min-height: calc(100vh - 45px);
+  }
 }
 </style> 

@@ -48,7 +48,7 @@
 <script>
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'UserManagement',
@@ -64,7 +64,7 @@ export default {
     const loadParents = async () => {
       loading.value = true;
       try {
-        const response = await axios.get('/users/parents');
+        const response = await api.get('/users/parents');
         parents.value = response.data;
       } catch (error) {
         ElMessage.error('加载家长列表失败');

@@ -46,7 +46,7 @@ app.use('/api/mock-face-recognition', mockFaceRecognitionRoutes);
 
 ### 3. 远端API调用
 ```
-Node.js后端 → http://192.168.5.25:5000/database/add_child
+Node.js后端 → http://192.168.5.61:5000/database/add_child
 ```
 
 ## 🧪 验证方法
@@ -67,14 +67,14 @@ restart_services.cmd
 
 ### 期望结果：
 - ✅ 网络请求显示: `POST http://localhost:3000/api/mock-face-recognition/database/add_child`
-- ✅ 后端日志显示: 向 `http://192.168.5.25:5000/database/add_child` 发送请求
+- ✅ 后端日志显示: 向 `http://192.168.5.61:5000/database/add_child` 发送请求
 - ✅ 没有404错误或路径not found错误
 
 ## 📊 配置确认
 
 ### 环境变量（backend/.env）:
 ```bash
-REMOTE_TRAINING_API=http://192.168.5.25:5000/database/add_child
+REMOTE_TRAINING_API=http://192.168.5.61:5000/database/add_child
 ```
 
 ### 前端axios配置（frontend/src/store/index.js）:

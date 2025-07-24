@@ -109,7 +109,7 @@ const requestData = {
 
 ```bash
 # 修正远端API配置
-REMOTE_TRAINING_API=http://192.168.5.25:5000/database/add_child  # 实际远端服务器地址
+REMOTE_TRAINING_API=http://192.168.5.61:5000/database/add_child  # 实际远端服务器地址
 REMOTE_API_TIMEOUT=60000
 REMOTE_API_MAX_RETRIES=3
 ```

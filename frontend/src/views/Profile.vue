@@ -91,7 +91,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'ProfilePage',
@@ -151,7 +151,7 @@ export default {
     
     const loadProfile = async () => {
       try {
-        const response = await axios.get('/users/profile');
+        const response = await api.get('/users/profile');
         Object.assign(userInfo, response.data);
       } catch (error) {
         ElMessage.error('加载个人信息失败');
@@ -165,7 +165,7 @@ export default {
         
         loading.value = true;
         
-        await axios.put('/users/profile', {
+        await api.put('/users/profile', {
           username: userInfo.username,
           full_name: userInfo.fullName,
           class_id: userInfo.classId
@@ -186,7 +186,7 @@ export default {
         
         passwordLoading.value = true;
         
-        await axios.put('/auth/change-password', {
+        await api.put('/auth/change-password', {
           currentPassword: passwordData.oldPassword,
           newPassword: passwordData.newPassword
         });

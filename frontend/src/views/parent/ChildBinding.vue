@@ -236,7 +236,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { User, Upload } from '@element-plus/icons-vue';
-import axios from 'axios';
+import api from '@/utils/axios';
 
 export default {
   name: 'ChildBinding',
@@ -272,7 +272,7 @@ export default {
     
     const loadBoundChildren = async () => {
       try {
-        const response = await axios.get('/users/children');
+        const response = await api.get('/users/children');
         boundChildren.value = response.data;
       } catch (error) {
         console.error('加载已绑定孩子列表失败:', error);
@@ -286,7 +286,7 @@ export default {
         
         binding.value = true;
         
-        const response = await axios.post('/users/bind-child', {
+        const response = await api.post('/users/bind-child', {
           studentNumber: bindingFormData.studentNumber
         });
         
@@ -322,7 +322,7 @@ export default {
         
         unbinding.value = true;
         
-        await axios.delete('/users/bind-child', {
+        await api.delete('/users/bind-child', {
           data: { childId: child.id }
         });
         
@@ -346,7 +346,7 @@ export default {
     // 人脸识别相关函数
     const loadTrainingStatus = async (childId) => {
       try {
-        const response = await axios.get(`/mock-face-recognition/training-status/${childId}`);
+        const response = await api.get(`/mock-face-recognition/training-status/${childId}`);
         trainingStatus.value = response.data;
       } catch (error) {
         console.error('加载训练状态失败:', error);
@@ -432,7 +432,7 @@ export default {
           age: requestData.profile.age
         });
         
-        const response = await axios.post('/mock-face-recognition/database/add_child', requestData, {
+        const response = await api.post('/mock-face-recognition/database/add_child', requestData, {
           headers: {
             'Content-Type': 'application/json'
           }
@@ -490,7 +490,7 @@ export default {
           type: 'warning'
         });
         
-        await axios.delete(`/mock-face-recognition/training-data/${imageId}`);
+        await api.delete(`/mock-face-recognition/training-data/${imageId}`);
         ElMessage.success('删除成功');
         
         // 重新加载训练状态
