@@ -14,7 +14,7 @@
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-icon><User /></el-icon>
-              <span class="user-name">{{ userInfo.full_name }}</span>
+              <span class="user-name">{{ userInfo && userInfo.full_name ? userInfo.full_name : '用户' }}</span>
               <el-icon class="el-icon--right"><arrow-down /></el-icon>
             </span>
             <template #dropdown>
@@ -34,7 +34,7 @@
           <el-dropdown @command="handleCommand">
             <span class="mobile-user-info">
               <el-icon><User /></el-icon>
-              <span class="mobile-user-name">{{ userInfo.full_name }}</span>
+              <span class="mobile-user-name">{{ userInfo && userInfo.full_name ? userInfo.full_name : '用户' }}</span>
               <el-icon class="el-icon--right"><arrow-down /></el-icon>
             </span>
             <template #dropdown>
@@ -193,13 +193,13 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { useRouter } from 'vue-router';
-import { Link, Plus } from '@element-plus/icons-vue';
+import { Link, Camera } from '@element-plus/icons-vue';
 
 export default {
   name: 'App',
   components: {
     Link,
-    Plus
+    Camera
   },
   setup() {
     const store = useStore();
