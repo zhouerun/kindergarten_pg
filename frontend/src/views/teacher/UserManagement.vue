@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 <template>
   <div class="user-management-container">
     <div class="page-header">

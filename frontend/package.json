@@ -5,6 +5,8 @@
   "description": "幼儿园家校沟通系统前端",
   "scripts": {
     "serve": "vue-cli-service serve",
+    "dev": "vue-cli-service serve",
+    "dev:fast": "vue-cli-service serve --skip-plugins @vue/cli-plugin-eslint",
     "start": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "test:unit": "vue-cli-service test:unit",
