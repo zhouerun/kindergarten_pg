@@ -1,8 +1,12 @@
 <template>
   <div id="app">
-    <el-container>
+    <!-- 未登录时直接显示路由内容 -->
+    <router-view v-if="!isAuthenticated" />
+    
+    <!-- 已登录时显示完整布局 -->
+    <el-container v-else>
       <!-- 桌面端头部 -->
-      <el-header v-if="isAuthenticated && !isMobile" class="header">
+      <el-header v-if="!isMobile" class="header">
         <div class="header-left">
           <h1 class="logo">🎈 幼儿园家校沟通系统</h1>
         </div>
@@ -24,7 +28,7 @@
       </el-header>
 
       <!-- 移动端头部 -->
-      <el-header v-if="isAuthenticated && isMobile" class="mobile-header">
+      <el-header v-if="isMobile" class="mobile-header">
         <div class="mobile-header-content">
           <h1 class="mobile-logo">🎈 幼儿园家校沟通系统</h1>
           <el-dropdown @command="handleCommand">
@@ -45,7 +49,7 @@
 
       <el-container>
         <!-- 桌面端侧边栏 -->
-        <el-aside v-if="isAuthenticated && !isMobile" class="sidebar" :width="sidebarWidth">
+        <el-aside v-if="!isMobile" class="sidebar" :width="sidebarWidth">
           <el-menu
             :default-active="$route.path"
             class="sidebar-menu"
@@ -109,7 +113,7 @@
       </el-container>
 
       <!-- 移动端底部导航栏 -->
-      <div v-if="isAuthenticated && isMobile" class="mobile-bottom-nav">
+      <div v-if="isMobile" class="mobile-bottom-nav">
         <!-- 家长端导航 -->
         <template v-if="userInfo.role === 'parent'">
           <div 
