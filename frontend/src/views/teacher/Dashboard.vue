@@ -13,7 +13,7 @@
     <div class="dashboard-header">
       <div class="header-icon">🎓</div>
       <h1>教师工作台</h1>
-      <p>欢迎回来，{{ userInfo.full_name }}老师</p>
+      <p>欢迎回来，{{ userInfo && userInfo.full_name ? userInfo.full_name : '老师' }}老师</p>
       <!-- <div class="welcome-decoration">✨ 今天也要加油哦！✨</div> -->
     </div>
     

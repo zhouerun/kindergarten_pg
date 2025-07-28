@@ -3,8 +3,14 @@
     <!-- 未登录时直接显示路由内容 -->
     <router-view v-if="!isAuthenticated" />
     
+    <!-- 登录中或用户信息加载中 -->
+    <div v-else-if="isAuthenticated && !userInfo" class="loading-container">
+      <el-loading-spinner />
+      <p>正在加载用户信息...</p>
+    </div>
+    
     <!-- 已登录时显示完整布局 -->
-    <el-container v-else>
+    <el-container v-else-if="isAuthenticated && userInfo">
       <!-- 桌面端头部 -->
       <el-header v-if="!isMobile" class="header">
         <div class="header-left">
@@ -59,7 +65,7 @@
             active-text-color="#ffd04b"
             :collapse="isCollapse"
           >
-            <template v-if="userInfo.role === 'teacher'">
+            <template v-if="userInfo && userInfo.role === 'teacher'">
               <el-menu-item index="/teacher">
                 <el-icon><House /></el-icon>
                 <span>教师工作台</span>
@@ -82,7 +88,7 @@
               </el-menu-item>
             </template>
             
-            <template v-if="userInfo.role === 'parent'">
+            <template v-if="userInfo && userInfo.role === 'parent'">
               <el-menu-item index="/parent">
                 <el-icon><House /></el-icon>
                 <span>家长工作台</span>
@@ -115,7 +121,7 @@
       <!-- 移动端底部导航栏 -->
       <div v-if="isMobile" class="mobile-bottom-nav">
         <!-- 家长端导航 -->
-        <template v-if="userInfo.role === 'parent'">
+        <template v-if="userInfo && userInfo.role === 'parent'">
           <div 
             class="nav-item" 
             :class="{ active: $route.path === '/parent/photos' }"
@@ -145,7 +151,7 @@
         </template>
 
         <!-- 教师端导航 -->
-        <template v-if="userInfo.role === 'teacher'">
+        <template v-if="userInfo && userInfo.role === 'teacher'">
           <div 
             class="nav-item" 
             :class="{ active: $route.path === '/teacher' }"
@@ -156,13 +162,11 @@
           </div>
           
           <div 
-            class="nav-item upload-btn" 
+            class="nav-item" 
             :class="{ active: $route.path === '/teacher/upload' }"
             @click="$router.push('/teacher/upload')"
           >
-            <div class="upload-icon-wrapper">
-              <el-icon><Plus /></el-icon>
-            </div>
+            <el-icon><Camera /></el-icon>
             <span>上传照片</span>
           </div>
           
@@ -226,8 +230,8 @@ export default {
           router.push('/profile');
           break;
         case 'logout':
-          store.dispatch('logout');
           router.push('/login');
+          store.dispatch('logout');
           break;
       }
     };
@@ -265,6 +269,21 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   height: 100vh;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.loading-container p {
+  margin-top: 20px;
+  color: #666;
+  font-size: 16px;
 }
 
 .header {
