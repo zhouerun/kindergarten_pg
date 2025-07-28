@@ -57,13 +57,46 @@ api.interceptors.response.use(
   response => {
     return response;
   },
-  error => {
+  async error => {
     console.error('响应错误:', error);
     console.error('错误详情:', error.response?.data);
     
     // 处理401未授权错误
     if (error.response?.status === 401) {
+      const errorCode = error.response?.data?.code;
+      
+      // 如果是token过期，尝试刷新
+      if (errorCode === 'TOKEN_EXPIRED') {
+        try {
+          // 获取store实例
+          const store = JSON.parse(localStorage.getItem('vuex') || '{}');
+          const refreshToken = store.refreshToken || localStorage.getItem('refreshToken');
+          
+          if (refreshToken) {
+            // 尝试刷新token
+            const refreshResponse = await axios.post('/api/auth/refresh', { refreshToken });
+            const { accessToken, user } = refreshResponse.data;
+            
+            // 更新localStorage
+            localStorage.setItem('token', accessToken);
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            // 更新axios默认头
+            api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+            
+            // 重试原始请求
+            const originalRequest = error.config;
+            originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          console.error('刷新token失败:', refreshError);
+        }
+      }
+      
+      // 刷新失败或没有refreshToken，清除认证信息并跳转登录
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }

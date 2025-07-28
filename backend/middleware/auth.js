@@ -20,6 +20,16 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     console.log('Token解码成功:', decoded);
     
+    // 检查token是否过期
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (decoded.exp && decoded.exp < currentTime) {
+      console.log('Token已过期');
+      return res.status(401).json({ 
+        error: '访问令牌已过期',
+        code: 'TOKEN_EXPIRED'
+      });
+    }
+    
     // 从数据库获取用户信息（使用重试机制）
     const users = await executeWithRetry(
       'SELECT id, username, role, full_name, class_id FROM users WHERE id = ?',
@@ -75,7 +85,6 @@ const authorizeRole = (roles) => {
   };
 };
 
-// 生成JWT token
 const generateToken = (user) => {
   return jwt.sign(
     { 
@@ -84,12 +93,43 @@ const generateToken = (user) => {
       role: user.role 
     },
     JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '2h' } // 默认两小时
   );
+};
+
+// 生成刷新令牌（用于移动端长期登录）
+const generateRefreshToken = (user) => {
+  return jwt.sign(
+    { 
+      userId: user.id, 
+      username: user.username, 
+      type: 'refresh' // 标识这是刷新令牌
+    },
+    JWT_SECRET,
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '30d' } // 默认30天
+  );
+};
+
+// 验证刷新令牌
+const verifyRefreshToken = (refreshToken) => {
+  try {
+    const decoded = jwt.verify(refreshToken, JWT_SECRET);
+    
+    // 检查是否是刷新令牌
+    if (decoded.type !== 'refresh') {
+      throw new Error('Invalid token type');
+    }
+    
+    return decoded;
+  } catch (error) {
+    throw error;
+  }
 };
 
 module.exports = {
   authenticateToken,
   authorizeRole,
-  generateToken
+  generateToken,
+  generateRefreshToken,
+  verifyRefreshToken
 }; 

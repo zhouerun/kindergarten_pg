@@ -18,7 +18,7 @@
 
 #### 1. 上传训练数据
 ```
-POST /api/mock-face-recognition/upload-training-data
+POST /api/face-recognition/upload-training-data
 Content-Type: multipart/form-data
 Authorization: Bearer <token>
 
@@ -29,13 +29,13 @@ Parameters:
 
 #### 2. 查询训练状态
 ```
-GET /api/mock-face-recognition/training-status/:childId
+GET /api/face-recognition/training-status/:childId
 Authorization: Bearer <token>
 ```
 
 #### 3. 健康检查
 ```
-GET /api/mock-face-recognition/health
+GET /api/face-recognition/health
 ```
 
 ### 远端API数据格式
@@ -173,7 +173,7 @@ npm start
 - 错误信息和堆栈
 
 ### 健康检查
-访问 `/api/mock-face-recognition/health` 检查：
+访问 `/api/face-recognition/health` 检查：
 - 后端服务状态
 - 远端API连接状态
 - 响应时间

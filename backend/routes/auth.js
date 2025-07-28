@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { pool } = require('../config/database');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, generateRefreshToken, verifyRefreshToken } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -37,13 +37,15 @@ router.post('/login', [
       return res.status(401).json({ error: '用户名或密码错误' });
     }
 
-    // 生成token
-    const token = generateToken(user);
+    // 生成访问令牌和刷新令牌
+    const accessToken = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    // 返回用户信息和token
+    // 返回用户信息和令牌
     res.json({
       message: '登录成功',
-      token,
+      accessToken,
+      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -163,6 +165,53 @@ router.post('/change-password', [
   } catch (error) {
     console.error('修改密码错误:', error);
     res.status(500).json({ error: '修改密码失败' });
+  }
+});
+
+// 刷新访问令牌
+router.post('/refresh', [
+  body('refreshToken').notEmpty().withMessage('刷新令牌不能为空')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg });
+    }
+
+    const { refreshToken } = req.body;
+
+    // 验证刷新令牌
+    const decoded = verifyRefreshToken(refreshToken);
+
+    // 从数据库获取用户信息
+    const [users] = await pool.execute(
+      'SELECT id, username, role, full_name, class_id FROM users WHERE id = ?',
+      [decoded.userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({ error: '用户不存在' });
+    }
+
+    const user = users[0];
+
+    // 生成新的访问令牌
+    const newAccessToken = generateToken(user);
+
+    res.json({
+      message: '令牌刷新成功',
+      accessToken: newAccessToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        full_name: user.full_name,
+        class_id: user.class_id
+      }
+    });
+  } catch (error) {
+    console.error('刷新令牌错误:', error);
+    res.status(401).json({ error: '刷新令牌无效' });
   }
 });
 

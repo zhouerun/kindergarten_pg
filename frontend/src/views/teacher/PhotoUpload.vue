@@ -18,15 +18,15 @@
           </el-select>
         </el-form-item>
         
-        <el-form-item label="照片类型">
+        <el-form-item label="权限类型">
           <el-radio-group v-model="uploadForm.isPublic">
-            <el-radio :label=1>公开照片</el-radio>
-            <el-radio :label=0>私密照片</el-radio>
-          </el-radio-group>
+            <el-radio :label=1>允许所有人查看</el-radio>
+            <el-radio :label=0>仅允许孩子的家长查看</el-radio>
+          </el-radio-group> 
         </el-form-item>
         
         <el-form-item label="活动场景">
-          <el-select v-model="uploadForm.activity" placeholder="请选择活动场景">
+          <el-select v-model="uploadForm.activity" placeholder="请根据图片选择活动场景描述">
             <el-option 
               v-for="activity in activityOptions" 
               :key="activity.value" 
@@ -176,19 +176,19 @@
         <div class="preview-info">
           <div class="info-row">
             <span class="info-label">文件名：</span>
-            <span class="info-value">{{ currentPreviewFile?.name }}</span>
+            <span class="info-value">{{ currentPreviewFile && currentPreviewFile.name ? currentPreviewFile.name : '' }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">文件大小：</span>
-            <span class="info-value">{{ formatFileSize(currentPreviewFile?.size) }}</span>
+            <span class="info-value">{{ currentPreviewFile && currentPreviewFile.size ? formatFileSize(currentPreviewFile.size) : '' }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">文件类型：</span>
-            <span class="info-value">{{ currentPreviewFile?.raw?.type }}</span>
+            <span class="info-value">{{ currentPreviewFile && currentPreviewFile.raw && currentPreviewFile.raw.type ? currentPreviewFile.raw.type : '' }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">最后修改：</span>
-            <span class="info-value">{{ formatDate(currentPreviewFile?.raw?.lastModified) }}</span>
+            <span class="info-value">{{ currentPreviewFile && currentPreviewFile.raw && currentPreviewFile.raw.lastModified ? formatDate(currentPreviewFile.raw.lastModified) : '' }}</span>
           </div>
         </div>
         
@@ -386,14 +386,14 @@ export default {
           class_id: fileList.value.map(() => uploadForm.classId),
           is_public: fileList.value.map(() => uploadForm.isPublic),
           activity_detail: fileList.value.map(() => uploadForm.activity || ''),
-          uploader_id: fileList.value.map(() => store.state.user?.id || store.state.userId),
+          uploader_id: fileList.value.map(() => store.state.user && store.state.user.id ? store.state.user.id : store.state.userId),
           images: base64Images
         };
         
         console.log('开始上传，文件数量:', fileList.value.length, '上传表单数据:', uploadForm);
         
-        // 发送上传请求到本地代理服务（解决跨域问题）
-        const response = await api.post('/photos/batch-recognize', payload, {
+        // 发送上传请求到人脸识别服务
+        const response = await api.post('/face-recognition/batch-recognize', payload, {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${store.state.token}`
@@ -414,7 +414,7 @@ export default {
           uploadHistory.value.unshift({
             filename: file.name,
             status: 'success',
-            recognitionResult: response.data.photos?.[0]?.recognition_data?.child_ids || [],
+            recognitionResult: response.data.photos && response.data.photos[0] && response.data.photos[0].recognition_data && response.data.photos[0].recognition_data.child_ids ? response.data.photos[0].recognition_data.child_ids : [],
             uploadTime: new Date().toLocaleString()
           });
         });
@@ -424,7 +424,7 @@ export default {
         
       } catch (error) {
         console.error('上传失败:', error);
-        ElMessage.error('上传失败: ' + (error.response?.data?.error || error.message));
+        ElMessage.error('上传失败: ' + (error.response && error.response.data && error.response.data.error ? error.response.data.error : error.message));
         
         // 添加失败记录
         fileList.value.forEach(file => {
@@ -447,7 +447,7 @@ export default {
       uploadHistory.value.unshift({
         filename: file.name,
         status: 'success',
-        recognitionResult: response.recognition_data?.child_ids || [],
+        recognitionResult: response.recognition_data && response.recognition_data.child_ids ? response.recognition_data.child_ids : [],
         uploadTime: new Date().toLocaleString()
       });
       
