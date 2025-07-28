@@ -36,7 +36,7 @@ npm start
 
 ```
 前端 (Vue) 
-    ↓ POST /api/mock-face-recognition/database/add_child
+    ↓ POST /api/face-recognition/database/add_child
 Node.js 后端 (代理层)
     ↓ 处理认证、验证、格式转换
     ↓ POST http://192.168.5.61:5000/database/add_child
@@ -78,7 +78,7 @@ Node.js 后端 (代理层)
 
 ### 1. 检查后端健康状态
 ```bash
-curl http://localhost:3000/api/mock-face-recognition/health
+curl http://localhost:3000/api/face-recognition/health
 ```
 
 ### 2. 检查远端服务连接
@@ -90,7 +90,7 @@ curl http://localhost:3000/api/mock-face-recognition/health
 TOKEN="your_jwt_token_here"
 
 # 测试新格式API
-curl -X POST http://localhost:3000/api/mock-face-recognition/database/add_child \
+curl -X POST http://localhost:3000/api/face-recognition/database/add_child \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{

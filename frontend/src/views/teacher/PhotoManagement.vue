@@ -189,35 +189,6 @@
           />
         </div>
         
-        <div class="preview-info">
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">拍摄时间：</span>
-              <span class="value">{{ formatDate(currentPreviewPhoto?.created_at) }}</span>
-            </div>
-            <div class="info-item" v-if="currentPreviewPhoto?.activity">
-              <span class="label">活动场景：</span>
-              <span class="value">{{ currentPreviewPhoto.activity }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">照片类型：</span>
-              <span class="value">{{ currentPreviewPhoto?.is_public ? '公开照片' : '私密照片' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">识别学生：</span>
-              <span class="value">
-                {{ currentPreviewPhoto?.children?.length > 0 ? 
-                   currentPreviewPhoto.children.map(c => c.name).join(', ') : 
-                   '未识别到学生' }}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="label">点赞数：</span>
-              <span class="value">{{ currentPreviewPhoto?.like_count || 0 }}</span>
-            </div>
-          </div>
-        </div>
-        
         <div class="preview-navigation" v-if="previewPhotos.length > 1">
           <el-button 
             @click="prevPreviewPhoto" 
@@ -641,47 +612,21 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  /* height: 80vh; */
 }
 
 .preview-image-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  max-height: 60vh;
+  height: 80%;
 }
 
 .preview-image {
   max-width: 100%;
-  max-height: 100%;
+  height: 60vh;
   border-radius: 8px;
   object-fit: contain;
-}
-
-.preview-info {
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 8px;
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-}
-
-.label {
-  font-weight: 500;
-  color: #606266;
-  margin-right: 8px;
-}
-
-.value {
-  color: #303133;
 }
 
 .preview-navigation {
@@ -700,6 +645,8 @@ export default {
 .dialog-footer {
   text-align: center;
 }
+
+
 
 /* 响应式设计 */
 @media (max-width: 768px) {
@@ -733,12 +680,10 @@ export default {
     gap: 10px;
   }
   
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
+
   
   .preview-navigation {
-    flex-direction: column;
+    flex-direction: row;
     gap: 10px;
   }
 }

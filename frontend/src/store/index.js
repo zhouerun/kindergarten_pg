@@ -1,10 +1,10 @@
 import { createStore } from 'vuex';
 import api from '../utils/axios';
 
-// 创建store
 const store = createStore({
   state: {
     token: localStorage.getItem('token') || null,
+    refreshToken: localStorage.getItem('refreshToken') || null,
     user: JSON.parse(localStorage.getItem('user') || 'null'),
     loading: false,
     error: null,
@@ -21,6 +21,15 @@ const store = createStore({
       } else {
         localStorage.removeItem('token');
         delete api.defaults.headers.common['Authorization'];
+      }
+    },
+    
+    SET_REFRESH_TOKEN(state, refreshToken) {
+      state.refreshToken = refreshToken;
+      if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+      } else {
+        localStorage.removeItem('refreshToken');
       }
     },
     
@@ -63,9 +72,10 @@ const store = createStore({
         console.log('尝试登录，API地址:', api.defaults.baseURL);
         
         const response = await api.post('/auth/login', credentials);
-        const { token, user } = response.data;
+        const { accessToken, refreshToken, user } = response.data;
         
-        commit('SET_TOKEN', token);
+        commit('SET_TOKEN', accessToken);
+        commit('SET_REFRESH_TOKEN', refreshToken);
         commit('SET_USER', user);
         
         return response.data;
@@ -96,10 +106,34 @@ const store = createStore({
     
     logout({ commit }) {
       commit('SET_TOKEN', null);
+      commit('SET_REFRESH_TOKEN', null); //登出后清除刷新令牌
       commit('SET_USER', null);
       commit('SET_CLASSES', []);
       commit('SET_PHOTOS', []);
       commit('SET_USERS', []);
+    },
+    
+    async refreshToken({ commit, state }) {
+      try {
+        const refreshToken = state.refreshToken;
+        if (!refreshToken) {
+          throw new Error('没有刷新令牌');
+        }
+
+        const response = await api.post('/auth/refresh', { refreshToken });
+        const { accessToken, user } = response.data;
+        
+        commit('SET_TOKEN', accessToken);
+        commit('SET_USER', user);
+        
+        return { accessToken, user };
+      } catch (error) {
+        // 刷新失败，清除所有认证信息
+        commit('SET_TOKEN', null);
+        commit('SET_REFRESH_TOKEN', null);
+        commit('SET_USER', null);
+        throw new Error(error.response?.data?.error || '刷新令牌失败');
+      }
     },
     
     async fetchUserProfile({ commit }) {
@@ -201,7 +235,7 @@ const store = createStore({
   }
 });
 
-// 如果有token，初始化时设�?
+// 如果本地有token，初始化时设置
 if (store.state.token) {
   api.defaults.headers.common['Authorization'] = `Bearer ${store.state.token}`;
 }
