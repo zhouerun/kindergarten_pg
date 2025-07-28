@@ -24,18 +24,6 @@ const routes = [
     component: () => import('../views/Profile.vue'),
     meta: { requiresAuth: true }
   },
-  {
-    path: '/test-input',
-    name: 'TestInput',
-    component: () => import('../views/TestInput.vue'),
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/test-compression',
-    name: 'TestCompression',
-    component: () => import('../views/TestImageCompression.vue'),
-    meta: { requiresAuth: false }
-  },
   // 教师端路由
   {
     path: '/teacher',

@@ -2,7 +2,7 @@
   <div class="parent-dashboard">
     <div class="dashboard-header">
       <h1>家长工作台</h1>
-      <p>欢迎回来，{{ userInfo.full_name }}</p>
+      <p>欢迎回来，{{ userInfo && userInfo.full_name ? userInfo.full_name : '家长' }}</p>
     </div>
     
     <div class="children-info" v-if="children.length > 0">
