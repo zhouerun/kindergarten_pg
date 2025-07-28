@@ -203,20 +203,55 @@
       </div>
     </div>
     
+    <!-- 照片预览对话框 -->
+    <el-dialog 
+      v-model="showPreviewDialog" 
+      width="100%"
+      center
+      append-to-body
+      class="photo-preview-dialog"
+      :show-close="false"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+    >
+      <div class="preview-container">
+        <div class="preview-image-wrapper">
+          <img 
+            v-if="currentPreviewPhoto"
+            :src="getImageUrl(currentPreviewPhoto.path)" 
+            class="preview-image"
+            alt="预览图片"
+            @error="handleImageError"
+          />
+        </div>
+        
+        <!-- 右上角关闭按钮 -->
+        <div class="close-button" @click="showPreviewDialog = false">
+          <el-icon><Close /></el-icon>
+        </div>
+        
+        <!-- 右下角点赞按钮 -->
+        <div class="like-button" @click="toggleLike(currentPreviewPhoto)">
+          <el-icon>
+            <component :is="currentPreviewPhoto?.liked ? 'StarFilled' : 'Star'" />
+          </el-icon>
+        </div>
+      </div>
+    </el-dialog>
 
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown } from '@element-plus/icons-vue';
+import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue';
 import api from '@/utils/axios';
 
 export default {
   name: 'PublicPhotos',
   components: {
-    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown
+    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Close
   },
   setup() {
     // 集合视图相关变量
@@ -230,6 +265,11 @@ export default {
     // 孩子信息（用于显示识别到的孩子姓名）
     const children = ref([]);
     
+    // 照片预览相关变量
+    const showPreviewDialog = ref(false);
+    const currentPreviewPhoto = ref(null);
+    const previewPhotos = ref([]);
+    const currentPreviewIndex = ref(0);
 
     
     const formatDate = (dateString) => {
@@ -281,9 +321,83 @@ export default {
     };
     
     // 预览照片（简单实现）
-    const previewPhoto = (photo) => {
-      console.log('预览照片:', photo);
-      // 这里可以添加预览逻辑
+    const previewPhoto = (photo, allPhotos) => {
+      currentPreviewPhoto.value = photo;
+      previewPhotos.value = allPhotos;
+      currentPreviewIndex.value = allPhotos.findIndex(p => p.id === photo.id);
+      showPreviewDialog.value = true;
+      
+      // 添加触摸滑动支持
+      nextTick(() => {
+        addTouchSupport();
+      });
+    };
+
+    // 添加触摸滑动支持
+    const addTouchSupport = () => {
+      const imageWrapper = document.querySelector('.preview-image-wrapper');
+      if (!imageWrapper) return;
+      
+      let startX = 0;
+      let startY = 0;
+      let endX = 0;
+      let endY = 0;
+      
+      const handleTouchStart = (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      };
+      
+      const handleTouchEnd = (e) => {
+        endX = e.changedTouches[0].clientX;
+        endY = e.changedTouches[0].clientY;
+        
+        const diffX = startX - endX;
+        const diffY = startY - endY;
+        
+        // 确保是水平滑动且滑动距离足够
+        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+          if (diffX > 0) {
+            // 向左滑动，显示下一张
+            nextPreviewPhoto();
+          } else {
+            // 向右滑动，显示上一张
+            prevPreviewPhoto();
+          }
+        }
+      };
+      
+      imageWrapper.addEventListener('touchstart', handleTouchStart);
+      imageWrapper.addEventListener('touchend', handleTouchEnd);
+      
+      // 清理函数
+      const cleanup = () => {
+        imageWrapper.removeEventListener('touchstart', handleTouchStart);
+        imageWrapper.removeEventListener('touchend', handleTouchEnd);
+      };
+      
+      // 在对话框关闭时清理事件监听器
+      watch(() => showPreviewDialog.value, (newVal) => {
+        if (!newVal) {
+          cleanup();
+        }
+      });
+    };
+
+    // 上一张照片
+    const prevPreviewPhoto = () => {
+      if (currentPreviewIndex.value > 0) {
+        currentPreviewIndex.value--;
+        currentPreviewPhoto.value = previewPhotos.value[currentPreviewIndex.value];
+      }
+    };
+
+    // 下一张照片
+    const nextPreviewPhoto = () => {
+      if (currentPreviewIndex.value < previewPhotos.value.length - 1) {
+        currentPreviewIndex.value++;
+        currentPreviewPhoto.value = previewPhotos.value[currentPreviewIndex.value];
+      }
     };
     
     // 加载孩子信息
@@ -368,6 +482,11 @@ export default {
       expandedActivities,
       expandedPeriods,
       children,
+      // 照片预览相关
+      showPreviewDialog,
+      currentPreviewPhoto,
+      previewPhotos,
+      currentPreviewIndex,
       // 函数
       formatDate,
       getImageUrl,
@@ -379,7 +498,10 @@ export default {
       changeGroupBy,
       toggleClass,
       toggleActivity,
-      togglePeriod
+      togglePeriod,
+      prevPreviewPhoto,
+      nextPreviewPhoto,
+      addTouchSupport
     };
   }
 };
@@ -633,6 +755,105 @@ export default {
   color: #67c23a;
 }
 
+/* 照片预览对话框样式 */
+.photo-preview-dialog .el-dialog {
+  background: #000;
+  border-radius: 0;
+  margin: 0;
+  width: 100% !important;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+}
+
+.photo-preview-dialog .el-dialog__header {
+  display: none;
+}
+
+.photo-preview-dialog .el-dialog__body {
+  padding: 0;
+  height: 100vh;
+  background: #000;
+}
+
+.preview-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-image-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  padding: 0;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* 右上角关闭按钮 */
+.close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  color: white;
+  font-size: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.close-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* 右下角点赞按钮 */
+.like-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  color: white;
+  font-size: 24px;
+  transition: background-color 0.3s ease;
+}
+
+.like-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.like-button .el-icon {
+  color: #ff6b6b;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .group-controls {
@@ -647,12 +868,96 @@ export default {
   }
   
   .photos-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
   }
   
   .photo-image {
     height: 100px;
+  }
+  
+  /* 手机端照片预览优化 */
+  .photo-preview-dialog .el-dialog {
+    margin: 0;
+    width: 100% !important;
+    height: 100vh;
+  }
+  
+  .preview-container {
+    height: 100vh;
+  }
+  
+  .close-button {
+    top: 15px;
+    right: 15px;
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+  }
+  
+  .like-button {
+    bottom: 15px;
+    right: 15px;
+    width: 45px;
+    height: 45px;
+    font-size: 20px;
+  }
+}
+
+/* 照片预览对话框样式优化 */
+.photo-preview-dialog .el-dialog {
+  background: #000;
+  border-radius: 0;
+}
+
+.photo-preview-dialog .el-dialog__header {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.photo-preview-dialog .el-dialog__title {
+  color: white;
+}
+
+.photo-preview-dialog .el-dialog__headerbtn .el-dialog__close {
+  color: white;
+}
+
+.photo-preview-dialog .el-dialog__headerbtn:hover .el-dialog__close {
+  color: #409EFF;
+}
+
+/* 照片网格优化 */
+.photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+@media (max-width: 480px) {
+  .photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 6px;
+    margin-top: 10px;
+  }
+  
+  .photo-image {
+    height: 80px;
+  }
+  
+  .photo-overlay {
+    padding: 5px;
+  }
+  
+  .photo-info p {
+    font-size: 10px;
+  }
+  
+  .photo-actions .el-button {
+    padding: 2px 6px;
+    font-size: 10px;
   }
 }
 </style> 
