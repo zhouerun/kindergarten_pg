@@ -206,13 +206,11 @@
     <!-- 照片预览对话框 -->
     <el-dialog 
       v-model="showPreviewDialog" 
-      width="100%"
+      :title="`照片预览`"
+      width="90%"
       center
       append-to-body
       class="photo-preview-dialog"
-      :show-close="false"
-      :close-on-click-modal="false"
-      :close-on-press-escape="false"
     >
       <div class="preview-container">
         <div class="preview-image-wrapper">
@@ -225,18 +223,47 @@
           />
         </div>
         
-        <!-- 右上角关闭按钮 -->
-        <div class="close-button" @click="showPreviewDialog = false">
-          <el-icon><Close /></el-icon>
-        </div>
-        
-        <!-- 右下角点赞按钮 -->
-        <div class="like-button" @click="toggleLike(currentPreviewPhoto)">
-          <el-icon>
-            <component :is="currentPreviewPhoto?.liked ? 'StarFilled' : 'Star'" />
-          </el-icon>
+        <div class="preview-navigation" v-if="previewPhotos.length > 1">
+          <el-button 
+            @click="prevPreviewPhoto" 
+            :disabled="currentPreviewIndex === 0"
+            type="primary"
+            class="nav-button"
+          >
+            <el-icon><ArrowLeft /></el-icon>
+            上一张
+          </el-button>
+          
+          <span class="nav-info">
+            {{ currentPreviewIndex + 1 }} / {{ previewPhotos.length }}
+          </span>
+          
+          <el-button 
+            @click="nextPreviewPhoto" 
+            :disabled="currentPreviewIndex === previewPhotos.length - 1"
+            type="primary"
+            class="nav-button"
+          >
+            下一张
+            <el-icon><ArrowRight /></el-icon>
+          </el-button>
         </div>
       </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showPreviewDialog = false">关闭</el-button>
+          <el-button 
+            :type="currentPreviewPhoto?.liked ? 'danger' : 'primary'"
+            @click="toggleLike(currentPreviewPhoto)"
+          >
+            <el-icon>
+              <component :is="currentPreviewPhoto?.liked ? 'StarFilled' : 'Star'" />
+            </el-icon>
+            {{ currentPreviewPhoto?.liked ? '取消点赞' : '点赞' }}
+          </el-button>
+        </div>
+      </template>
     </el-dialog>
 
   </div>
@@ -245,13 +272,13 @@
 <script>
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Close } from '@element-plus/icons-vue';
+import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
 import api from '@/utils/axios';
 
 export default {
   name: 'PublicPhotos',
   components: {
-    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Close
+    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight
   },
   setup() {
     // 集合视图相关变量
@@ -756,102 +783,90 @@ export default {
 }
 
 /* 照片预览对话框样式 */
-.photo-preview-dialog .el-dialog {
-  background: #000;
-  border-radius: 0;
-  margin: 0;
-  width: 100% !important;
-  height: 100vh;
-  max-width: none;
-  max-height: none;
-}
-
 .photo-preview-dialog .el-dialog__header {
-  display: none;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #e4e7ed;
 }
 
 .photo-preview-dialog .el-dialog__body {
-  padding: 0;
-  height: 100vh;
-  background: #000;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .preview-container {
   position: relative;
   width: 100%;
-  height: 100vh;
-  background: #000;
+  height: 600px; /* 调整预览图片高度 */
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  background-color: #000; /* 背景黑色 */
 }
 
 .preview-image-wrapper {
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
-  background: #000;
-  padding: 0;
+  align-items: center;
 }
 
 .preview-image {
   max-width: 100%;
   max-height: 100%;
-  width: auto;
-  height: auto;
   object-fit: contain;
+  border-radius: 8px;
 }
 
-/* 右上角关闭按钮 */
-.close-button {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 1000;
-  color: white;
-  font-size: 20px;
-  transition: background-color 0.3s ease;
-}
-
-.close-button:hover {
-  background: rgba(0, 0, 0, 0.8);
-}
-
-/* 右下角点赞按钮 */
-.like-button {
+.preview-navigation {
   position: absolute;
   bottom: 20px;
-  right: 20px;
-  width: 50px;
-  height: 50px;
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: 50%;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 1000;
+  gap: 20px;
+  background-color: rgba(0,0,0,0.5);
+  padding: 8px 15px;
+  border-radius: 20px;
+  z-index: 10;
+}
+
+.nav-button {
+  background-color: rgba(255,255,255,0.2);
   color: white;
-  font-size: 24px;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
-.like-button:hover {
-  background: rgba(0, 0, 0, 0.8);
+.nav-button:hover {
+  background-color: rgba(255,255,255,0.4);
 }
 
-.like-button .el-icon {
-  color: #ff6b6b;
+.nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nav-info {
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 /* 响应式设计 */
@@ -878,29 +893,78 @@ export default {
   
   /* 手机端照片预览优化 */
   .photo-preview-dialog .el-dialog {
-    margin: 0;
-    width: 100% !important;
-    height: 100vh;
+    margin: 10px;
+    width: calc(100% - 20px) !important;
+    max-width: none;
+  }
+  
+  .photo-preview-dialog .el-dialog__body {
+    padding: 0;
   }
   
   .preview-container {
-    height: 100vh;
+    background: #000;
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
   }
   
-  .close-button {
-    top: 15px;
-    right: 15px;
-    width: 35px;
-    height: 35px;
-    font-size: 18px;
+  .preview-image-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+    padding: 0;
   }
   
-  .like-button {
-    bottom: 15px;
-    right: 15px;
-    width: 45px;
-    height: 45px;
-    font-size: 20px;
+  .preview-image {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+  }
+  
+  .preview-navigation {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+  }
+  
+  .nav-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+  }
+  
+  .nav-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  .nav-info {
+    color: white;
+    font-size: 14px;
+    padding: 0 15px;
+  }
+  
+  .dialog-footer {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .dialog-footer .el-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+  }
+  
+  .dialog-footer .el-button:hover {
+    background: rgba(255, 255, 255, 0.3);
   }
 }
 
