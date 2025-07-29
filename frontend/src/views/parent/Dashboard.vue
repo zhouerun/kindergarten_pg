@@ -5,25 +5,33 @@
       <p>欢迎回来，{{ userInfo && userInfo.full_name ? userInfo.full_name : '家长' }}</p>
     </div>
     
-    <div class="children-info" v-if="children.length > 0">
+    <div class="children-section">
       <h2>我的孩子</h2>
-      <div class="children-cards">
-        <div 
-          v-for="child in children" 
-          :key="child.id"
-          class="child-card"
-        >
-          <el-card>
-            <div class="child-info">
-              <el-avatar size="large" class="child-avatar">
-                {{ child.name.charAt(0) }}
-              </el-avatar>
-              <div class="child-details">
-                <h3>{{ child.name }}</h3>
-                <p>{{ child.class_name }}</p>
-              </div>
+      <div class="children-scroll-container">
+        <div class="children-circles">
+          <!-- 孩子圆圈 -->
+          <div 
+            v-for="child in children" 
+            :key="child.id"
+            class="child-circle"
+            @click="navigateToChildPhotos(child)"
+          >
+            <div class="circle-avatar">
+              {{ child.name.charAt(0) }}
             </div>
-          </el-card>
+            <div class="circle-name">{{ child.name }}</div>
+          </div>
+          
+          <!-- 添加新孩子的圆圈 -->
+          <div 
+            class="child-circle add-child-circle"
+            @click="navigateToBinding"
+          >
+            <div class="circle-avatar add-avatar">
+              <el-icon><Plus /></el-icon>
+            </div>
+            <div class="circle-name">孩子管理</div>
+          </div>
         </div>
       </div>
     </div>
@@ -85,7 +93,8 @@
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
-import { FolderOpened, Camera, User, Trophy } from '@element-plus/icons-vue';
+import { useRouter } from 'vue-router';
+import { FolderOpened, Camera, User, Trophy, Plus } from '@element-plus/icons-vue';
 
 export default {
   name: 'ParentDashboard',
@@ -93,10 +102,12 @@ export default {
     FolderOpened,
     Camera,
     User,
-    Trophy
+    Trophy,
+    Plus
   },
   setup() {
     const store = useStore();
+    const router = useRouter();
     const userInfo = computed(() => store.getters.userInfo);
     
     const children = ref([]);
@@ -111,13 +122,27 @@ export default {
       }
     };
     
+    const navigateToChildPhotos = (child) => {
+      // 跳转到孩子照片页面，并传递孩子信息
+      router.push({
+        path: '/parent/photos',
+        query: { childId: child.id }
+      });
+    };
+    
+    const navigateToBinding = () => {
+      router.push('/parent/binding');
+    };
+    
     onMounted(() => {
       loadDashboardData();
     });
     
     return {
       userInfo,
-      children
+      children,
+      navigateToChildPhotos,
+      navigateToBinding
     };
   }
 };
@@ -147,64 +172,83 @@ export default {
   font-size: 18px;
 }
 
-.children-info {
+.children-section {
   margin-bottom: 40px;
 }
 
-.children-info h2 {
+.children-section h2 {
   color: #303133;
   margin-bottom: 20px;
   font-size: 24px;
   font-weight: 500;
 }
 
-.children-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
+.children-scroll-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
-.child-card {
-  transition: transform 0.2s ease;
+.children-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
-.child-card:hover {
-  transform: translateY(-2px);
-}
-
-.child-card :deep(.el-card) {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
-  border: none;
-}
-
-.child-info {
+.children-circles {
   display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 10px;
+  gap: 5px;
+  padding: 5px 0;
+  min-width: max-content;
 }
 
-.child-avatar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-size: 20px;
-  font-weight: bold;
+.child-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  min-width: 80px;
+}
+
+.child-circle:hover {
+  transform: scale(1.05);
+}
+
+.circle-avatar {
   width: 60px;
   height: 60px;
-}
-
-.child-details h3 {
-  margin: 0 0 8px 0;
-  color: #303133;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 20px;
-  font-weight: 500;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
 }
 
-.child-details p {
-  margin: 0;
+.circle-avatar:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.add-avatar {
+  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  font-size: 24px;
+}
+
+.circle-name {
+  font-size: 14px;
   color: #606266;
-  font-size: 16px;
+  text-align: center;
+  font-weight: 500;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .main-actions {
@@ -265,8 +309,19 @@ export default {
     font-size: 16px;
   }
   
-  .children-cards {
-    grid-template-columns: 1fr;
+  .children-circles {
+    gap: 15px;
+  }
+  
+  .circle-avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 18px;
+  }
+  
+  .circle-name {
+    font-size: 12px;
+    max-width: 60px;
   }
   
   .action-buttons {
@@ -278,12 +333,6 @@ export default {
     height: 50px;
     font-size: 14px;
   }
-  
-  .child-info {
-    flex-direction: column;
-    text-align: center;
-    gap: 10px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -291,14 +340,33 @@ export default {
     font-size: 24px;
   }
   
-  .children-info h2 {
+  .children-section h2 {
     font-size: 20px;
   }
   
-  .child-info {
-    flex-direction: column;
-    text-align: center;
-    gap: 10px;
+  .children-circles {
+    gap: 12px;
+  }
+  
+  .circle-avatar {
+    width: 45px;
+    height: 45px;
+    font-size: 16px;
+  }
+  
+  .circle-name {
+    font-size: 11px;
+    max-width: 50px;
+  }
+  
+  /* 手机端优化：确保圆圈容器有足够的空间 */
+  .children-scroll-container {
+    margin: 0 -15px;
+    padding: 0 15px;
+  }
+  
+  .children-circles {
+    padding: 10px 0;
   }
 }
 </style> 
