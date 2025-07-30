@@ -217,6 +217,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     res.json({
       ...classInfo,
       students,
+      student_count: students.length,
       photo_count: photoCount[0].count
     });
   } catch (error) {

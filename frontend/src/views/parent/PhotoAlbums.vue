@@ -8,20 +8,18 @@
     <!-- 孩子切换控制栏 -->
     <el-card style="margin-bottom: 20px;">
       <div class="child-selector">
-        <div class="child-tabs">
-          <el-button-group>
-            <el-button 
+        <div class="child-tabs-container">
+          <div class="child-tabs-scroll">
+            <div 
               v-for="album in albums" 
               :key="album.child.id"
-              :type="selectedChildId === album.child.id ? 'primary' : 'default'"
+              class="child-tab-item"
+              :class="{ active: selectedChildId === album.child.id }"
               @click="selectChild(album.child.id)"
             >
-              <el-avatar :size="24" class="child-avatar-small">
-                {{ album.child.name.charAt(0) }}
-              </el-avatar>
-              {{ album.child.name }}
-            </el-button>
-          </el-button-group>
+              <div class="child-tab-name">{{ album.child.name }}</div>
+            </div>
+          </div>
         </div>
         
         <div class="view-controls">
@@ -351,6 +349,7 @@
 
 <script>
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { 
   Calendar, 
@@ -383,6 +382,7 @@ export default {
     Close
   },
   setup() {
+    const route = useRoute();
     const loading = ref(false);
     const albums = ref([]);
     const groupBy = ref('day');
@@ -436,8 +436,19 @@ export default {
         
         albums.value = response.data.albums;
         
-        // 默认选择第一个孩子
-        if (albums.value.length > 0 && !selectedChildId.value) {
+        // 检查URL参数中是否有childId
+        const urlChildId = route.query.childId;
+        if (urlChildId && albums.value.length > 0) {
+          // 检查该childId是否存在于相册中
+          const targetAlbum = albums.value.find(album => album.child.id == urlChildId);
+          if (targetAlbum) {
+            selectedChildId.value = targetAlbum.child.id;
+          } else {
+            // 如果找不到对应的孩子，选择第一个
+            selectedChildId.value = albums.value[0].child.id;
+          }
+        } else if (albums.value.length > 0 && !selectedChildId.value) {
+          // 默认选择第一个孩子
           selectedChildId.value = albums.value[0].child.id;
         }
         
@@ -784,19 +795,67 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: 20px;
 }
 
-.child-tabs {
+.child-tabs-container {
   flex: 1;
+  overflow: hidden;
 }
 
-.child-avatar-small {
-  margin-right: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-weight: bold;
+.child-tabs-scroll {
+  display: flex;
+  gap: 15px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  padding: 5px 0;
+}
+
+.child-tabs-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.child-tab-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  max-width: 80px;
+  height: 40px;
+  padding: 8px 12px;
+  background: white;
+  border: 2px solid #e4e7ed;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.child-tab-item:hover {
+  border-color: #409eff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+}
+
+.child-tab-item.active {
+  border-color: #409eff;
+  background: #f0f9ff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+}
+
+.child-tab-name {
+  font-size: 12px;
+  color: #606266;
+  text-align: center;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
 }
 
 .timeline-container {
@@ -1018,10 +1077,47 @@ export default {
   .child-selector {
     flex-direction: column;
     align-items: stretch;
+    gap: 15px;
   }
   
-  .child-tabs {
-    overflow-x: auto;
+  .child-tabs-container {
+    order: 1;
+  }
+  
+  .view-controls {
+    order: 2;
+  }
+  
+  .child-tabs-scroll {
+    gap: 12px;
+  }
+  
+  .child-tab-item {
+    min-width: 70px;
+    max-width: 70px;
+    height: 35px;
+    padding: 6px 10px;
+  }
+  
+  .child-tab-name {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .child-tabs-scroll {
+    gap: 10px;
+  }
+  
+  .child-tab-item {
+    min-width: 60px;
+    max-width: 60px;
+    height: 30px;
+    padding: 4px 8px;
+  }
+  
+  .child-tab-name {
+    font-size: 10px;
   }
   
   .timeline {

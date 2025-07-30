@@ -14,24 +14,27 @@
       </template>
       
       <div class="bound-children">
-        <div 
-          v-for="child in boundChildren" 
-          :key="child.id"
-          class="child-item"
-        >
-          <el-tag size="large" type="success">
-            <el-icon><User /></el-icon>
-            {{ child.name }} (学号: {{ child.student_number }})
-          </el-tag>
-          <span class="child-class">{{ child.class_name }}</span>
-          <el-button 
-            type="danger" 
-            size="small" 
-            @click="unbindChild(child)"
-            :loading="unbinding"
+        <div class="children-circles">
+          <div 
+            v-for="child in boundChildren" 
+            :key="child.id"
+            class="child-circle"
           >
-            解绑
-          </el-button>
+            <div class="circle-avatar">
+              {{ child.name.charAt(0) }}
+            </div>
+            <div class="circle-name">{{ child.name }}</div>
+            <div class="circle-class">{{ child.class_name }}</div>
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="unbindChild(child)"
+              :loading="unbinding"
+              class="unbind-btn"
+            >
+              解绑
+            </el-button>
+          </div>
         </div>
       </div>
     </el-card>
@@ -169,13 +172,12 @@
 <script>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { User, Upload } from '@element-plus/icons-vue';
+import { Upload } from '@element-plus/icons-vue';
 import api from '@/utils/axios';
 
 export default {
   name: 'ChildBinding',
   components: {
-    User,
     Upload
   },
   setup() {
@@ -472,19 +474,75 @@ export default {
   gap: 15px;
 }
 
-.child-item {
+.children-circles {
   display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 0;
 }
 
-.child-class {
-  color: #666;
-  font-size: 14px;
-  flex: 1;
+.child-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 100px;
+  padding: 5px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.child-circle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.circle-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.circle-avatar:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.circle-name {
+  font-size: 16px;
+  color: #303133;
+  text-align: center;
+  font-weight: 500;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.circle-class {
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unbind-btn {
+  margin-top: 5px;
+  font-size: 12px;
+  padding: 4px 12px;
 }
 
 .binding-instructions {
@@ -522,19 +580,66 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .child-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+  .children-circles {
+    gap: 15px;
   }
   
-  .child-class {
-    flex: none;
+  .child-circle {
+    min-width: 80px;
+    padding: 10px;
+  }
+  
+  .circle-avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 18px;
+  }
+  
+  .circle-name {
+    font-size: 14px;
+    max-width: 80px;
+  }
+  
+  .circle-class {
+    font-size: 11px;
+    max-width: 80px;
   }
   
   .upload-actions .el-button {
     margin: 5px;
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .children-circles {
+    gap: 12px;
+  }
+  
+  .child-circle {
+    min-width: 70px;
+    padding: 8px;
+  }
+  
+  .circle-avatar {
+    width: 45px;
+    height: 45px;
+    font-size: 16px;
+  }
+  
+  .circle-name {
+    font-size: 12px;
+    max-width: 70px;
+  }
+  
+  .circle-class {
+    font-size: 10px;
+    max-width: 70px;
+  }
+  
+  .unbind-btn {
+    font-size: 11px;
+    padding: 3px 8px;
   }
 }
 </style> 
