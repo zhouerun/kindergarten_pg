@@ -27,11 +27,11 @@ const dbConfig = {
 };
 
 // 远端API配置
-const REMOTE_SERVER_BASE_URL = process.env.REMOTE_SERVER_BASE_URL || 'http://192.168.5.38:5000';
+const REMOTE_SERVER_BASE_URL = process.env.REMOTE_SERVER_BASE_URL || 'http://47.107.84.24';
 const REMOTE_TRAINING_API = process.env.REMOTE_TRAINING_API || `${REMOTE_SERVER_BASE_URL}/database/add_child`;
 const REMOTE_BATCH_RECOGNIZE_API = process.env.REMOTE_BATCH_RECOGNIZE_API || `${REMOTE_SERVER_BASE_URL}/batch_recognize`;
 const REMOTE_HEALTH_CHECK_API = process.env.REMOTE_HEALTH_CHECK_API || `${REMOTE_SERVER_BASE_URL}/health`;
-const REMOTE_API_TIMEOUT = parseInt(process.env.REMOTE_API_TIMEOUT) || 60000;
+const REMOTE_API_TIMEOUT = parseInt(process.env.REMOTE_API_TIMEOUT) || 300000; // 5分钟
 const REMOTE_API_MAX_RETRIES = parseInt(process.env.REMOTE_API_MAX_RETRIES) || 3;
 
 // 构建发送给远端的数据 (JSON格式)
@@ -68,18 +68,31 @@ const sendToRemoteTrainingService = async (jsonData) => {
         'Content-Type': 'application/json',
       },
       timeout: REMOTE_API_TIMEOUT,
-      maxContentLength: 50 * 1024 * 1024, // 50MB
-      maxBodyLength: 50 * 1024 * 1024,
+      maxContentLength: 100 * 1024 * 1024, // 100MB
+      maxBodyLength: 100 * 1024 * 1024,
     });
     
     return response.data;
   } catch (error) {
-    console.log(jsonData);
+    console.log('发送的数据大小:', JSON.stringify(jsonData).length, '字符');
     console.error('远端训练服务调用失败:', error.message);
+    
+    if (error.code === 'ECONNABORTED') {
+      console.error('请求超时，超时时间:', REMOTE_API_TIMEOUT, 'ms');
+      throw new Error(`请求超时（${REMOTE_API_TIMEOUT/1000}秒），请检查网络连接或稍后重试`);
+    }
+    
     if (error.response) {
       console.error('响应状态:', error.response.status);
       console.error('响应数据:', error.response.data);
+      throw new Error(`远端服务错误: ${error.response.status} - ${error.response.data?.message || '未知错误'}`);
     }
+    
+    if (error.request) {
+      console.error('网络请求失败:', error.request);
+      throw new Error('无法连接到远端服务，请检查网络连接');
+    }
+    
     throw new Error('训练服务暂时不可用，请稍后重试');
   }
 };
@@ -289,6 +302,14 @@ router.post('/batch-recognize', authenticateToken, authorizeRole(['teacher']), a
       res.status(error.response.status).json({
         error: '远端识别服务错误',
         details: error.response.data
+      });
+    } else if (error.code === 'ECONNABORTED') {
+      // 请求超时
+      console.error('批量识别请求超时，超时时间:', REMOTE_API_TIMEOUT, 'ms');
+      res.status(408).json({
+        error: '请求超时',
+        message: `识别服务响应超时（${REMOTE_API_TIMEOUT/1000}秒），请稍后重试`,
+        timeout: REMOTE_API_TIMEOUT
       });
     } else if (error.request) {
       // 请求发送失败（网络问题等）

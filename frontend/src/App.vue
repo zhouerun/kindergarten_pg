@@ -14,7 +14,7 @@
       <!-- 桌面端头部 -->
       <el-header v-if="!isMobile" class="header">
         <div class="header-left">
-          <h1 class="logo">🎈 幼儿园家校沟通系统</h1>
+          <h1 class="logo">幼儿园成长相册</h1>
         </div>
         <div class="header-right">
           <el-dropdown @command="handleCommand">
@@ -36,7 +36,7 @@
       <!-- 移动端头部 -->
       <el-header v-if="isMobile" class="mobile-header">
         <div class="mobile-header-content">
-          <h1 class="mobile-logo">🎈 幼儿园家校沟通系统</h1>
+          <h1 class="mobile-logo">幼儿园成长相册</h1>
           <el-dropdown @command="handleCommand">
             <span class="mobile-user-info">
               <el-icon><User /></el-icon>
@@ -364,6 +364,7 @@ export default {
   cursor: pointer;
   color: white;
   gap: 5px;
+  padding: 5px;
 }
 
 .mobile-user-name {

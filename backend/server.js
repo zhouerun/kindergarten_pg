@@ -70,10 +70,26 @@ app.use(cors({
 // 限流中间件
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 限制每个IP每15分钟最多100个请求
-  message: '请求过于频繁，请稍后再试'
+  max: 500, // 限制每个IP每15分钟最多500个请求
+  message: '请求过于频繁，请稍后再试',
+  standardHeaders: true,
+  legacyHeaders: false
 });
-app.use('/api/', limiter);
+
+// 对登录接口使用更宽松的限流
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟
+  max: 1000, // 登录接口允许更多请求
+  message: '登录请求过于频繁，请稍后再试'
+});
+
+// 只在生产环境启用限流
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/auth', authLimiter);
+  app.use('/api/', limiter);
+} else {
+  console.log('开发环境：限流已禁用');
+}
 
 // 解析JSON
 app.use(express.json({ limit: '10mb' }));
