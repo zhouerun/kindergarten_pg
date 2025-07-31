@@ -13,12 +13,16 @@ const userRoutes = require('./routes/users');
 const FaceRecognitionRoutes = require('./routes/faceRecognition');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // 开发环境使用3000端口，生产环境使用25022
 
 // 定义允许的源
 const allowedOrigins = [
   'http://localhost:8080',
-  'http://127.0.0.1:8080'
+  'http://127.0.0.1:8080',
+  'http://localhost:25021', // 添加前端生产端口
+  'http://127.0.0.1:25021',
+  // 添加你的服务器IP（部署时需要修改）
+  'http://47.107.84.24:25021'
 ];
 
 // 添加环境变量配置的源

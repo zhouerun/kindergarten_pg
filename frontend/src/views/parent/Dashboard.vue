@@ -259,6 +259,7 @@ export default {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   border-radius: 12px;
   border: none;
+  /* margin-left: 12px; */
 }
 
 .card-header {
@@ -276,6 +277,10 @@ export default {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 20px;
   padding: 20px 0;
+}
+
+.action-buttons :deep(.el-button) {
+  margin-left: 0;
 }
 
 .main-action-btn {

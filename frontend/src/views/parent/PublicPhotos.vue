@@ -2,19 +2,7 @@
   <div class="public-photos-container">
     <div class="page-header">
       <h1>班级照片墙</h1>
-      <p>浏览所有班级的公开照片</p>
-      <el-alert
-        title="提示"
-        type="info"
-        :closable="false"
-        style="margin-top: 15px;"
-      >
-        <template #default>
-          <p>• 您可以浏览所有班级的公开照片</p>
-          <p>• 绿色标签标记的是您孩子所在的班级</p>
-          <p>• 所有照片都是老师上传的公开内容</p>
-        </template>
-      </el-alert>
+      <p>浏览班级的公开照片</p>
     </div>
     
     <!-- 控制栏 -->
@@ -65,14 +53,6 @@
               <div class="class-title">
                 <h3>{{ album.class.name }}</h3>
                 <el-tag size="small" type="info">{{ album.class.student_count }} 人</el-tag>
-                <el-tag 
-                  v-if="album.class.isParentClass" 
-                  size="small" 
-                  type="success"
-                  style="margin-left: 8px;"
-                >
-                  我的孩子所在班级
-                </el-tag>
               </div>
               <div class="class-stats">
                 <el-tag size="small">共 {{ album.totalPhotos }} 张照片</el-tag>
@@ -254,13 +234,13 @@
         <div class="dialog-footer">
           <el-button @click="showPreviewDialog = false">关闭</el-button>
           <el-button 
-            :type="currentPreviewPhoto?.liked ? 'danger' : 'primary'"
+            :type="currentPreviewPhoto && currentPreviewPhoto.liked ? 'danger' : 'primary'"
             @click="toggleLike(currentPreviewPhoto)"
           >
             <el-icon>
-              <component :is="currentPreviewPhoto?.liked ? 'StarFilled' : 'Star'" />
+              <component :is="currentPreviewPhoto && currentPreviewPhoto.liked ? 'StarFilled' : 'Star'" />
             </el-icon>
-            {{ currentPreviewPhoto?.liked ? '取消点赞' : '点赞' }}
+            {{ currentPreviewPhoto && currentPreviewPhoto.liked ? '取消点赞' : '点赞' }}
           </el-button>
         </div>
       </template>
@@ -272,13 +252,13 @@
 <script>
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
+import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Star, StarFilled } from '@element-plus/icons-vue';
 import api from '@/utils/axios';
 
 export default {
   name: 'PublicPhotos',
   components: {
-    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight
+    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Star, StarFilled
   },
   setup() {
     // 集合视图相关变量
@@ -563,7 +543,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 15px;
+  /* margin-bottom: 15px; */
 }
 
 .group-controls {
@@ -605,7 +585,7 @@ export default {
 
 .class-info {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 10px;
 }
 
@@ -624,6 +604,8 @@ export default {
 .class-stats {
   display: flex;
   gap: 10px;
+  align-items: center;
+  justify-content: center;
 }
 
 .class-actions {
@@ -872,8 +854,18 @@ export default {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .group-controls {
+    padding: 2px;
+  }
+  .group-controls :deep(.el-button-group) {
+    display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: start;
+    gap: 5px;
+  }
+
+  .group-controls :deep(.el-button) {
+    border-radius: 10px;
   }
   
   .class-header {

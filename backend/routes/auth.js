@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const { pool } = require('../config/database');
 const { generateToken, generateRefreshToken, verifyRefreshToken } = require('../middleware/auth');
+const axios = require('axios');
 
 const router = express.Router();
 
@@ -51,9 +52,146 @@ router.post('/login', [
         username: user.username,
         role: user.role,
         full_name: user.full_name,
-        class_id: user.class_id
+        class_id: user.class_id,
       }
     });
+  } catch (error) {
+    console.error('登录错误:', error);
+    res.status(500).json({ error: '登录失败' });
+  }
+});
+
+// 新登录模块接入
+router.post('/login2', [
+  body('username').notEmpty().withMessage('用户名不能为空'),
+  body('password').isLength({ min: 6 }).withMessage('密码至少6位')
+], async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    // 调用外部登录系统
+    const externalResponse = await axios.post('http://47.107.84.24:5001/api/zdlt/login', { 
+      username, 
+      password 
+    });
+    
+    console.log('开始调用外部API...');
+    
+    // axios响应数据在response.data中
+    const responseData = externalResponse.data;
+    console.log('外部API响应数据:', responseData);
+    
+    // 检查外部登录是否成功，响应状态码 0成功，非0失败 msg 错误信息
+    if (responseData.code !== 0) {
+      return res.status(401).json({ error: responseData.msg || '登录失败' });
+    }
+    
+    const userData = responseData.data;
+    
+    // 生成我们自己的JWT token
+    const ourToken = generateToken({
+      id: userData.userId,
+      username: userData.userName,
+      role: mapExternalRole(userData.rolesName)
+    });
+    
+    res.json({
+      message: '登录成功',
+      accessToken: ourToken, 
+      refreshToken: null, // 外部系统可能没有refresh token
+      user: {
+        id: userData.userId,
+        username: userData.userName,
+        phone: userData.phone,
+        full_name: userData.name,
+        school: userData.schoolName,
+        class: userData.className,
+        mapped_role: mapExternalRole(userData.rolesName)
+      }
+    });
+    
+  } catch (error) {
+    console.error('登录错误:', error);
+    res.status(500).json({ error: '登录失败' });
+  }
+});
+
+// 角色映射函数
+function mapExternalRole(externalRole) {
+  const roleMap = {
+    '老师': 'teacher',
+    '家长': 'parent',
+  };
+  return roleMap[externalRole] || 'parent'; //其他角色暂时映射为家长角色
+}
+
+router.post('/send-code', [
+  body('phone').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码')
+], async (req, res) => {
+  try {
+    const { phone } = req.body;
+    // 转发到服务器上的5001端口
+    const response = await axios.post('http://47.107.84.24:5001/api/zdlt/sendsms', { phone });
+    // axios响应数据在response.data中
+    const responseData = response.data;
+    // 返回是否发送成功
+    res.json({ success: responseData.code === 0 });
+  } catch (error) {
+    console.error('发送验证码错误:', error);
+    res.status(500).json({ error: '发送验证码失败' });
+  }
+});
+
+router.post('/phoneLogin', [
+  body('phone').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('smsCode').isLength({ min: 4, max: 6 }).withMessage('验证码长度为4-6位')
+], async (req, res) => {
+  try {
+    const { phone, smsCode } = req.body;
+    console.log('查看手机号登录的参数:', phone, smsCode);
+    console.log('开始调用外部API...');
+    
+    // 调用外部手机号登录系统
+    const externalResponse = await axios.post('http://47.107.84.24:5001/api/zdlt/phoneLogin', { 
+      phone: phone, 
+      smsCode: smsCode 
+    }, {
+      timeout: 10000 // 10秒超时
+    });
+    
+    // axios响应数据在response.data中
+    const responseData = externalResponse.data;
+    console.log('外部API响应数据:', responseData);
+    
+    // 检查外部登录是否成功，响应状态码 0成功，非0失败 msg 错误信息
+    if (responseData.code !== 0) {
+      return res.status(401).json({ error: responseData.msg || '登录失败' });
+    }
+    const externalData = responseData.data;
+    
+    // 生成我们自己的JWT token
+    const ourToken = generateToken({
+      id: externalData.userId,
+      username: externalData.userName,
+      role: mapExternalRole(externalData.rolesName)
+    });
+    
+    // 返回统一格式的响应
+    res.json({
+      message: '登录成功',
+      accessToken: ourToken,
+      refreshToken: null,
+      user: {
+        id: externalData.userId,
+        username: externalData.userName,
+        phone: externalData.phone,
+        full_name: externalData.name,
+        school: externalData.schoolName,
+        class: externalData.className,
+        mapped_role: mapExternalRole(externalData.rolesName)
+      }
+    });
+    
   } catch (error) {
     console.error('登录错误:', error);
     res.status(500).json({ error: '登录失败' });

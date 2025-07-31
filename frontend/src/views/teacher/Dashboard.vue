@@ -216,7 +216,7 @@ export default {
       console.log('点击用户管理按钮');
       router.push('/teacher/users');
     };
-    
+
     const loadDashboardData = async () => {
       try {
         if (userInfo.value.class_id) {
@@ -234,7 +234,8 @@ export default {
         parentCount.value = usersResponse.data.length;
         
         // 模拟今日上传数量
-        todayPhotoCount.value = Math.floor(Math.random() * 10) + 1;
+        // todayPhotoCount.value = Math.floor(Math.random() * 10) + 1;
+        
       } catch (error) {
         console.error('加载数据失败:', error);
       }

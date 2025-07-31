@@ -13,6 +13,12 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/login2',
+    name: 'Login2',
+    component: () => import('../views/Login2.vue'),
+    meta: { requiresAuth: false }
+  },
+  {
     path: '/register',
     name: 'Register',
     component: () => import('../views/Register.vue'),
@@ -104,16 +110,28 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach((to, from, next) => {
   const isAuthenticated = store.getters.isAuthenticated;
-  const userRole = store.getters.userInfo?.role;
+  // 优先使用mapped_role，兼容role字段
+  const userInfo = store.getters.userInfo;
+  const userRole = userInfo?.mapped_role || userInfo?.role;
+
+  // 添加调试信息
+  console.log('路由守卫 - 目标路径:', to.path);
+  console.log('路由守卫 - 是否已认证:', isAuthenticated);
+  console.log('路由守卫 - 用户角色:', userRole);
+  console.log('路由守卫 - 用户信息:', userInfo);
+  console.log('路由守卫 - 用户mapped_role:', userInfo?.mapped_role);
+  console.log('路由守卫 - 用户role:', userInfo?.role);
 
   // 检查是否需要认证
   if (to.meta.requiresAuth && !isAuthenticated) {
+    console.log('路由守卫 - 需要认证但未认证，跳转到登录页');
     next('/login');
     return;
   }
 
   // 检查角色权限
   if (to.meta.role && userRole !== to.meta.role) {
+    console.log('路由守卫 - 角色不匹配，重定向');
     // 根据角色重定向到对应的首页
     if (userRole === 'teacher') {
       next('/teacher');
@@ -126,7 +144,8 @@ router.beforeEach((to, from, next) => {
   }
 
   // 已登录用户访问登录页面，重定向到对应首页
-  if (isAuthenticated && to.path === '/login') {
+  if (isAuthenticated && (to.path === '/login' || to.path === '/login2')) {
+    console.log('路由守卫 - 已登录用户访问登录页，重定向');
     if (userRole === 'teacher') {
       next('/teacher');
     } else if (userRole === 'parent') {
@@ -137,6 +156,7 @@ router.beforeEach((to, from, next) => {
     return;
   }
 
+  console.log('路由守卫 - 允许访问');
   next();
 });
 

@@ -4,21 +4,12 @@ import axios from 'axios';
 function getApiBaseUrl() {
   // 如果是开发环境，使用代理
   if (process.env.NODE_ENV === 'development') {
-    // 检查当前访问的域名
-    const currentHost = window.location.hostname;
-    
-    // 如果是本地网络访问，直接使用服务器IP
-    if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-      // 使用当前访问的IP地址，但端口改为3000（后端端口）
-      return `http://${currentHost}:3000/api`;
-    }
-    
-    // 本地访问使用代理
+    // 本地访问使用代理，避免网络检查延迟
     return '/api';
   }
   
   // 生产环境使用环境变量或默认值
-  return process.env.VUE_APP_API_URL || '/api';
+  return process.env.VUE_APP_API_URL;
 }
 
 // 创建axios实例
@@ -37,11 +28,10 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // 添加调试信息
-    if (process.env.NODE_ENV === 'development') {
+    // 添加调试信息（减少日志输出）
+    if (process.env.NODE_ENV === 'development' && process.env.VUE_APP_DEBUG === 'true') {
       console.log('API请求:', config.method?.toUpperCase(), config.url);
       console.log('API基础URL:', config.baseURL);
-      console.log('当前访问地址:', window.location.href);
     }
     
     return config;
@@ -61,43 +51,16 @@ api.interceptors.response.use(
     console.error('响应错误:', error);
     console.error('错误详情:', error.response?.data);
     
-    // 处理401未授权错误
+    // 处理401未授权错误 - 直接跳转登录，不使用refresh token
     if (error.response?.status === 401) {
-      const errorCode = error.response?.data?.code;
+      console.log('Token无效或过期，跳转登录页面');
       
-      // 如果是token过期，尝试刷新
-      if (errorCode === 'TOKEN_EXPIRED') {
-        try {
-          // 获取store实例
-          const store = JSON.parse(localStorage.getItem('vuex') || '{}');
-          const refreshToken = store.refreshToken || localStorage.getItem('refreshToken');
-          
-          if (refreshToken) {
-            // 尝试刷新token
-            const refreshResponse = await axios.post('/api/auth/refresh', { refreshToken });
-            const { accessToken, user } = refreshResponse.data;
-            
-            // 更新localStorage
-            localStorage.setItem('token', accessToken);
-            localStorage.setItem('user', JSON.stringify(user));
-            
-            // 更新axios默认头
-            api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-            
-            // 重试原始请求
-            const originalRequest = error.config;
-            originalRequest.headers['Authorization'] = `Bearer ${accessToken}`;
-            return api(originalRequest);
-          }
-        } catch (refreshError) {
-          console.error('刷新token失败:', refreshError);
-        }
-      }
-      
-      // 刷新失败或没有refreshToken，清除认证信息并跳转登录
+      // 清除认证信息
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      
+      // 跳转到登录页面
       window.location.href = '/login';
     }
     

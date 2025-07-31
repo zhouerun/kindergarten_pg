@@ -88,6 +88,56 @@ const store = createStore({
       }
     },
     
+    async login2({ commit }, credentials) {
+      try {
+        commit('SET_LOADING', true);
+        commit('SET_ERROR', null);
+        
+        // console.log('尝试外部登录，API地址:', api.defaults.baseURL);
+        
+        const response = await api.post('/auth/login2', credentials);
+        // 接口返回 message, accessToken, refreshToken, user 四个字段
+        const { accessToken, user } = response.data;
+        
+        commit('SET_TOKEN', accessToken);
+        commit('SET_REFRESH_TOKEN', null); // 外部系统没有refresh token
+        commit('SET_USER', user);
+        
+        return response.data;
+      } catch (error) {
+        const message = error.response?.data?.error || '登录失败';
+        commit('SET_ERROR', message);
+        throw new Error(message);
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+    
+    async phoneLogin({ commit }, credentials) {
+      try {
+        commit('SET_LOADING', true);
+        commit('SET_ERROR', null);
+        
+        // console.log('尝试手机号登录，API地址:', api.defaults.baseURL);
+        console.log('查看手机号登录的参数:', credentials);
+        
+        const response = await api.post('/auth/phoneLogin', credentials);
+        const { accessToken, user } = response.data;
+        
+        commit('SET_TOKEN', accessToken);
+        commit('SET_REFRESH_TOKEN', null); // 外部系统没有refresh token
+        commit('SET_USER', user);
+        
+        return response.data;
+      } catch (error) {
+        const message = error.response?.data?.error || '登录失败';
+        commit('SET_ERROR', message);
+        throw new Error(message);
+      } finally {
+        commit('SET_LOADING', false);
+      }
+    },
+    
     async register({ commit }, userData) {
       try {
         commit('SET_LOADING', true);
@@ -225,8 +275,9 @@ const store = createStore({
   getters: {
     isAuthenticated: (state) => !!state.token,
     userInfo: (state) => state.user,
-    isTeacher: (state) => state.user?.role === 'teacher',
-    isParent: (state) => state.user?.role === 'parent',
+    // 优先使用mapped_role，兼容role字段
+    isTeacher: (state) => (state.user?.mapped_role || state.user?.role) === 'teacher',
+    isParent: (state) => (state.user?.mapped_role || state.user?.role) === 'parent',
     isLoading: (state) => state.loading,
     error: (state) => state.error,
     classes: (state) => state.classes,

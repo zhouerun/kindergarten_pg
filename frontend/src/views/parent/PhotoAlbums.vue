@@ -1121,7 +1121,7 @@ export default {
   }
   
   .timeline {
-    padding-left: 20px;
+    padding-left: 0px;
   }
   
   .timeline-marker {
@@ -1226,6 +1226,29 @@ export default {
   .dialog-footer .el-button:hover {
     background: rgba(255, 255, 255, 0.3);
   }
+
+  .photos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 6px;
+    padding: 10px;
+  }
+  
+  .photo-image {
+    height: 80px;
+  }
+  
+  .photo-overlay {
+    padding: 5px;
+  }
+  
+  .photo-info p {
+    font-size: 10px;
+  }
+  
+  .photo-actions .el-button {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
 }
 
 /* 照片预览对话框样式优化 */
@@ -1258,31 +1281,6 @@ export default {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 15px;
   padding: 20px;
-}
-
-@media (max-width: 480px) {
-  .photos-grid {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 6px;
-    padding: 10px;
-  }
-  
-  .photo-image {
-    height: 80px;
-  }
-  
-  .photo-overlay {
-    padding: 5px;
-  }
-  
-  .photo-info p {
-    font-size: 10px;
-  }
-  
-  .photo-actions .el-button {
-    padding: 2px 6px;
-    font-size: 10px;
-  }
 }
 
 /* 周/月报样式 */
@@ -1412,9 +1410,13 @@ export default {
   font-size: 0.9em;
 }
 
+.marker-dot {
+  display: none;
+}
+
 .timeline-review {
   position: relative;
-  padding-left: 30px;
+  padding-left: 0px;
 }
 
 .review-item {
