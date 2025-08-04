@@ -8,6 +8,11 @@ module.exports = defineConfig({
     port: 8080,
     host: '0.0.0.0', // 允许外部IP访问
     open: true,
+    // 完全禁用WebSocket和热重载
+    webSocketServer: false,
+    hot: false,
+    liveReload: false,
+    client: false,
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

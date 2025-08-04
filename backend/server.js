@@ -19,10 +19,16 @@ const PORT = process.env.PORT || 3000; // 开发环境使用3000端口，生产�
 const allowedOrigins = [
   'http://localhost:8080',
   'http://127.0.0.1:8080',
-  'http://localhost:25021', // 添加前端生产端口
+  'https://localhost:8080',
+  'https://127.0.0.1:8080',
+  'http://localhost:25021', 
   'http://127.0.0.1:25021',
-  // 添加你的服务器IP（部署时需要修改）
-  'http://47.107.84.24:25021'
+  'https://localhost:25021',
+  'https://127.0.0.1:25021',
+  'https://kindergarten.szvt.com/',
+  'https://kindergarten.szvt.com',
+  'http://47.107.84.24:25021',
+  'https://47.107.84.24:25021'
 ];
 
 // 添加环境变量配置的源
@@ -36,9 +42,12 @@ function isLocalNetwork(origin) {
   
   // 检查是否为本地网络IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
   const localNetworkPatterns = [
-    /^http:\/\/192\.168\.\d+\.\d+:8080$/,
-    /^http:\/\/10\.\d+\.\d+\.\d+:8080$/,
-    /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:8080$/
+    /^https?:\/\/192\.168\.\d+\.\d+:8080$/,
+    /^https?:\/\/10\.\d+\.\d+\.\d+:8080$/,
+    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:8080$/,
+    /^https?:\/\/192\.168\.\d+\.\d+:25021$/,
+    /^https?:\/\/10\.\d+\.\d+\.\d+:25021$/,
+    /^https?:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:25021$/
   ];
   
   return localNetworkPatterns.some(pattern => pattern.test(origin));
