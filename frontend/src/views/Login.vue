@@ -2,8 +2,8 @@
   <div class="login-container">
     <div class="login-card">
       <div class="login-header">
-        <h1>🎈 幼儿园家校沟通系统</h1>
-        <p>让家校沟通更便捷</p>
+        <h1>幼儿园成长相册</h1>
+        <p>家校沟通更便捷</p>
       </div>
       
       <el-form
@@ -128,7 +128,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: rgb(230, 230, 230);
   padding: 20px;
 }
 

@@ -113,7 +113,7 @@
           </el-menu>
         </el-aside>
 
-        <el-main class="main-content">
+        <el-main class="main-content" :style="mainContentStyle">
           <router-view />
         </el-main>
       </el-container>
@@ -218,6 +218,14 @@ export default {
       return isCollapse.value ? '64px' : '200px';
     });
 
+    const mainContentStyle = computed(() => {
+      return {
+        marginLeft: isCollapse.value ? '64px' : '200px',
+        marginTop: '60px',
+        transition: 'margin-left 0.3s'
+      };
+    });
+
     const checkScreenSize = () => {
       const width = window.innerWidth;
       isCollapse.value = width <= 768;
@@ -251,6 +259,7 @@ export default {
       isCollapse,
       isMobile,
       sidebarWidth,
+      mainContentStyle,
       handleCommand
     };
   }
@@ -287,6 +296,11 @@ export default {
 }
 
 .header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -294,6 +308,7 @@ export default {
   color: white;
   padding: 0 15px;
   height: 60px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .logo {
@@ -321,8 +336,14 @@ export default {
 }
 
 .sidebar {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  bottom: 0;
   background-color: #545c64;
   transition: width 0.3s;
+  z-index: 999;
+  overflow-y: auto;
 }
 
 .sidebar-menu {
@@ -479,7 +500,8 @@ export default {
   
   .main-content {
     min-height: calc(100vh - 50px - 60px);
-    margin-left: 0;
+    margin-left: 0 !important;
+    margin-top: 0 !important;
     padding-bottom: 60px;
   }
 }

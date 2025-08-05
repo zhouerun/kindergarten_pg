@@ -540,7 +540,7 @@ export default {
       
       // 添加触摸滑动支持
       nextTick(() => {
-        addTouchSupport();
+        addTouchSupport('.preview-image-wrapper', () => showPreviewDialog.value);
       });
     };
 
@@ -556,7 +556,7 @@ export default {
       
       // 添加全屏预览的触摸滑动支持
       nextTick(() => {
-        addFullscreenTouchSupport();
+        addTouchSupport('.fullscreen-container', () => showFullscreenView.value, true);
       });
     };
 
@@ -579,10 +579,10 @@ export default {
       }
     };
     
-    // 添加全屏预览的触摸滑动支持
-    const addFullscreenTouchSupport = () => {
-      const fullscreenContainer = document.querySelector('.fullscreen-container');
-      if (!fullscreenContainer) return;
+    // 通用的触摸滑动支持函数
+    const addTouchSupport = (containerSelector, watchTarget, preventVerticalScroll = false) => {
+      const container = document.querySelector(containerSelector);
+      if (!container) return;
       
       let startX = 0;
       let startY = 0;
@@ -614,74 +614,29 @@ export default {
       };
       
       const handleTouchMove = (e) => {
-        // 禁用上下滑动
-        e.preventDefault();
-      };
-      
-      fullscreenContainer.addEventListener('touchstart', handleTouchStart);
-      fullscreenContainer.addEventListener('touchend', handleTouchEnd);
-      fullscreenContainer.addEventListener('touchmove', handleTouchMove);
-      
-      // 清理函数
-      const cleanup = () => {
-        fullscreenContainer.removeEventListener('touchstart', handleTouchStart);
-        fullscreenContainer.removeEventListener('touchend', handleTouchEnd);
-        fullscreenContainer.removeEventListener('touchmove', handleTouchMove);
-      };
-      
-      // 在关闭时清理事件监听器
-      watch(() => showFullscreenView.value, (newVal) => {
-        if (!newVal) {
-          cleanup();
-        }
-      });
-    };
-    
-    // 添加触摸滑动支持
-    const addTouchSupport = () => {
-      const imageWrapper = document.querySelector('.preview-image-wrapper');
-      if (!imageWrapper) return;
-      
-      let startX = 0;
-      let startY = 0;
-      let endX = 0;
-      let endY = 0;
-      
-      const handleTouchStart = (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-      };
-      
-      const handleTouchEnd = (e) => {
-        endX = e.changedTouches[0].clientX;
-        endY = e.changedTouches[0].clientY;
-        
-        const diffX = startX - endX;
-        const diffY = startY - endY;
-        
-        // 确保是水平滑动且滑动距离足够
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-          if (diffX > 0) {
-            // 向左滑动，显示下一张
-            nextPreviewPhoto();
-          } else {
-            // 向右滑动，显示上一张
-            prevPreviewPhoto();
-          }
+        // 如果需要禁用上下滑动
+        if (preventVerticalScroll) {
+          e.preventDefault();
         }
       };
       
-      imageWrapper.addEventListener('touchstart', handleTouchStart);
-      imageWrapper.addEventListener('touchend', handleTouchEnd);
+      container.addEventListener('touchstart', handleTouchStart);
+      container.addEventListener('touchend', handleTouchEnd);
+      if (preventVerticalScroll) {
+        container.addEventListener('touchmove', handleTouchMove);
+      }
       
       // 清理函数
       const cleanup = () => {
-        imageWrapper.removeEventListener('touchstart', handleTouchStart);
-        imageWrapper.removeEventListener('touchend', handleTouchEnd);
+        container.removeEventListener('touchstart', handleTouchStart);
+        container.removeEventListener('touchend', handleTouchEnd);
+        if (preventVerticalScroll) {
+          container.removeEventListener('touchmove', handleTouchMove);
+        }
       };
       
-      // 在对话框关闭时清理事件监听器
-      watch(() => showPreviewDialog.value, (newVal) => {
+      // 在目标状态改变时清理事件监听器
+      watch(watchTarget, (newVal) => {
         if (!newVal) {
           cleanup();
         }
@@ -764,7 +719,6 @@ export default {
       openFullscreen,
       closeFullscreen,
       openFullscreenPhoto,
-      addFullscreenTouchSupport,
       setNavbarZIndex
     };
   }

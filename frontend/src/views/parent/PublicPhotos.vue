@@ -140,7 +140,7 @@
                               v-for="photo in timeGroup.photos" 
                               :key="photo.id"
                               class="photo-item"
-                              @click="previewPhoto(photo, timeGroup.photos)"
+                              @click="openFullscreenPhoto(photo, timeGroup.photos)"
                             >
                               <img 
                                 :src="getImageUrl(photo.path)" 
@@ -183,68 +183,41 @@
       </div>
     </div>
     
-    <!-- 照片预览对话框 -->
-    <el-dialog 
-      v-model="showPreviewDialog" 
-      :title="`照片预览`"
-      width="90%"
-      center
-      append-to-body
-      class="photo-preview-dialog"
-    >
-      <div class="preview-container">
-        <div class="preview-image-wrapper">
-          <img 
-            v-if="currentPreviewPhoto"
-            :src="getImageUrl(currentPreviewPhoto.path)" 
-            class="preview-image"
-            alt="预览图片"
-            @error="handleImageError"
-          />
-        </div>
+
+    
+    <!-- 全屏图片展示页面 -->
+    <div v-if="showFullscreenView" class="fullscreen-view" @click="closeFullscreen">
+      <div class="fullscreen-container" @click.stop>
+        <img 
+          v-if="currentPreviewPhoto"
+          :src="getImageUrl(currentPreviewPhoto.path)" 
+          class="fullscreen-image"
+          alt="全屏图片"
+          @error="handleImageError"
+        />
         
-        <div class="preview-navigation" v-if="previewPhotos.length > 1">
-          <el-button 
-            @click="prevPreviewPhoto" 
-            :disabled="currentPreviewIndex === 0"
-            type="primary"
-            class="nav-button"
-          >
-            <el-icon><ArrowLeft /></el-icon>
-            上一张
-          </el-button>
-          
-          <span class="nav-info">
-            {{ currentPreviewIndex + 1 }} / {{ previewPhotos.length }}
-          </span>
-          
-          <el-button 
-            @click="nextPreviewPhoto" 
-            :disabled="currentPreviewIndex === previewPhotos.length - 1"
-            type="primary"
-            class="nav-button"
-          >
-            下一张
-            <el-icon><ArrowRight /></el-icon>
-          </el-button>
-        </div>
-      </div>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showPreviewDialog = false">关闭</el-button>
+        <!-- 点赞按钮 -->
+        <div class="fullscreen-like-button">
           <el-button 
             :type="currentPreviewPhoto && currentPreviewPhoto.liked ? 'danger' : 'primary'"
             @click="toggleLike(currentPreviewPhoto)"
+            circle
+            size="large"
           >
             <el-icon>
               <component :is="currentPreviewPhoto && currentPreviewPhoto.liked ? 'StarFilled' : 'Star'" />
             </el-icon>
-            {{ currentPreviewPhoto && currentPreviewPhoto.liked ? '取消点赞' : '点赞' }}
           </el-button>
         </div>
-      </template>
-    </el-dialog>
+        
+        <!-- 关闭按钮 -->
+        <div class="fullscreen-close-button">
+          <el-button @click="closeFullscreen" circle size="large">
+            <el-icon><Close /></el-icon>
+          </el-button>
+        </div>
+      </div>
+    </div>
 
   </div>
 </template>
@@ -252,13 +225,13 @@
 <script>
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Star, StarFilled } from '@element-plus/icons-vue';
+import { User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Star, StarFilled, Close } from '@element-plus/icons-vue';
 import api from '@/utils/axios';
 
 export default {
   name: 'PublicPhotos',
   components: {
-    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Star, StarFilled
+    User, Location, Calendar, Clock, Sunrise, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Star, StarFilled, Close
   },
   setup() {
     // 集合视图相关变量
@@ -273,10 +246,10 @@ export default {
     const children = ref([]);
     
     // 照片预览相关变量
-    const showPreviewDialog = ref(false);
     const currentPreviewPhoto = ref(null);
     const previewPhotos = ref([]);
     const currentPreviewIndex = ref(0);
+    const showFullscreenView = ref(false); // 控制全屏预览
 
     
     const formatDate = (dateString) => {
@@ -327,23 +300,47 @@ export default {
       // 可以在这里添加重试逻辑或显示默认图片
     };
     
-    // 预览照片（简单实现）
-    const previewPhoto = (photo, allPhotos) => {
+
+
+    // 全屏预览照片
+    const openFullscreenPhoto = (photo, allPhotos) => {
       currentPreviewPhoto.value = photo;
       previewPhotos.value = allPhotos;
       currentPreviewIndex.value = allPhotos.findIndex(p => p.id === photo.id);
-      showPreviewDialog.value = true;
+      showFullscreenView.value = true;
       
-      // 添加触摸滑动支持
+      // 设置导航栏z-index为1
+      setNavbarZIndex(1);
+      
+      // 添加全屏预览的触摸滑动支持
       nextTick(() => {
-        addTouchSupport();
+        addTouchSupport('.fullscreen-container', () => showFullscreenView.value, true);
       });
     };
 
-    // 添加触摸滑动支持
-    const addTouchSupport = () => {
-      const imageWrapper = document.querySelector('.preview-image-wrapper');
-      if (!imageWrapper) return;
+    const openFullscreen = () => {
+      showFullscreenView.value = true;
+    };
+
+    const closeFullscreen = () => {
+      showFullscreenView.value = false;
+      
+      // 恢复导航栏z-index为1000
+      setNavbarZIndex(1000);
+    };
+    
+    // 设置导航栏z-index的函数
+    const setNavbarZIndex = (zIndex) => {
+      const navbar = document.querySelector('.mobile-bottom-nav');
+      if (navbar) {
+        navbar.style.zIndex = zIndex;
+      }
+    };
+
+    // 通用的触摸滑动支持函数
+    const addTouchSupport = (containerSelector, watchTarget, preventVerticalScroll = false) => {
+      const container = document.querySelector(containerSelector);
+      if (!container) return;
       
       let startX = 0;
       let startY = 0;
@@ -374,17 +371,30 @@ export default {
         }
       };
       
-      imageWrapper.addEventListener('touchstart', handleTouchStart);
-      imageWrapper.addEventListener('touchend', handleTouchEnd);
+      const handleTouchMove = (e) => {
+        // 如果需要禁用上下滑动
+        if (preventVerticalScroll) {
+          e.preventDefault();
+        }
+      };
+      
+      container.addEventListener('touchstart', handleTouchStart);
+      container.addEventListener('touchend', handleTouchEnd);
+      if (preventVerticalScroll) {
+        container.addEventListener('touchmove', handleTouchMove);
+      }
       
       // 清理函数
       const cleanup = () => {
-        imageWrapper.removeEventListener('touchstart', handleTouchStart);
-        imageWrapper.removeEventListener('touchend', handleTouchEnd);
+        container.removeEventListener('touchstart', handleTouchStart);
+        container.removeEventListener('touchend', handleTouchEnd);
+        if (preventVerticalScroll) {
+          container.removeEventListener('touchmove', handleTouchMove);
+        }
       };
       
-      // 在对话框关闭时清理事件监听器
-      watch(() => showPreviewDialog.value, (newVal) => {
+      // 在目标状态改变时清理事件监听器
+      watch(watchTarget, (newVal) => {
         if (!newVal) {
           cleanup();
         }
@@ -431,6 +441,30 @@ export default {
         
         // 默认展开所有班级
         expandedClasses.value = albums.value.map(album => album.class.id);
+        
+        // 默认展开所有活动
+        const allActivities = [];
+        albums.value.forEach(album => {
+          album.activityGroups.forEach(activityGroup => {
+            if (!allActivities.includes(activityGroup.activity)) {
+              allActivities.push(activityGroup.activity);
+            }
+          });
+        });
+        expandedActivities.value = allActivities;
+        
+        // 默认展开所有时间段
+        const allPeriods = [];
+        albums.value.forEach(album => {
+          album.activityGroups.forEach(activityGroup => {
+            activityGroup.timeGroups.forEach(timeGroup => {
+              if (!allPeriods.includes(timeGroup.period)) {
+                allPeriods.push(timeGroup.period);
+              }
+            });
+          });
+        });
+        expandedPeriods.value = allPeriods;
         
         console.log('加载的公共照片集数据:', albums.value);
       } catch (error) {
@@ -490,15 +524,18 @@ export default {
       expandedPeriods,
       children,
       // 照片预览相关
-      showPreviewDialog,
       currentPreviewPhoto,
       previewPhotos,
       currentPreviewIndex,
+      showFullscreenView,
       // 函数
       formatDate,
       getImageUrl,
       handleImageError,
-      previewPhoto,
+      openFullscreenPhoto,
+      openFullscreen,
+      closeFullscreen,
+      setNavbarZIndex,
       getChildrenNames,
       toggleLike,
       loadAlbums,
@@ -562,11 +599,26 @@ export default {
 }
 
 .class-album {
+  position: relative;
   margin-bottom: 30px;
   background: #f8f9fa;
   border-radius: 12px;
-  overflow: hidden;
+  /* overflow: hidden; */
+  /* box-shadow: 0 4px 12px rgba(209, 209, 209, 0.3); */
+  
 }
+
+/* .class-album::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 2px;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #9ea9da 0%, #b18bd6 100%, #9ea8d4 100%);
+  z-index: 100;
+} */
 
 .class-header {
   display: flex;
@@ -714,6 +766,7 @@ export default {
   width: 100%;
   height: 120px;
   object-fit: cover;
+  object-position: center;
   border-radius: 8px;
 }
 
@@ -764,95 +817,19 @@ export default {
   color: #67c23a;
 }
 
-/* 照片预览对话框样式 */
-.photo-preview-dialog .el-dialog__header {
-  background-color: #f0f0f0;
-  border-bottom: 1px solid #e4e7ed;
-}
 
-.photo-preview-dialog .el-dialog__body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.preview-container {
-  position: relative;
-  width: 100%;
-  height: 600px; /* 调整预览图片高度 */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #000; /* 背景黑色 */
-}
-
-.preview-image-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 8px;
-}
-
-.preview-navigation {
-  position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background-color: rgba(0,0,0,0.5);
-  padding: 8px 15px;
-  border-radius: 20px;
-  z-index: 10;
-}
-
-.nav-button {
-  background-color: rgba(255,255,255,0.2);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.nav-button:hover {
-  background-color: rgba(255,255,255,0.4);
-}
-
-.nav-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.nav-info {
-  color: white;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+
+  .public-photos-container {
+    padding: 0px;
+  }
+
+  .activity-groups {
+    padding: 5px;
+  }
+
   .group-controls {
     padding: 2px;
   }
@@ -882,106 +859,6 @@ export default {
   .photo-image {
     height: 100px;
   }
-  
-  /* 手机端照片预览优化 */
-  .photo-preview-dialog .el-dialog {
-    margin: 10px;
-    width: calc(100% - 20px) !important;
-    max-width: none;
-  }
-  
-  .photo-preview-dialog .el-dialog__body {
-    padding: 0;
-  }
-  
-  .preview-container {
-    background: #000;
-    min-height: 60vh;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .preview-image-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-    padding: 0;
-  }
-  
-  .preview-image {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-  
-  .preview-navigation {
-    background: rgba(0, 0, 0, 0.8);
-    padding: 15px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-  }
-  
-  .nav-button {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-  }
-  
-  .nav-button:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-  
-  .nav-info {
-    color: white;
-    font-size: 14px;
-    padding: 0 15px;
-  }
-  
-  .dialog-footer {
-    background: rgba(0, 0, 0, 0.8);
-    padding: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .dialog-footer .el-button {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-  }
-  
-  .dialog-footer .el-button:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
-}
-
-/* 照片预览对话框样式优化 */
-.photo-preview-dialog .el-dialog {
-  background: #000;
-  border-radius: 0;
-}
-
-.photo-preview-dialog .el-dialog__header {
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.photo-preview-dialog .el-dialog__title {
-  color: white;
-}
-
-.photo-preview-dialog .el-dialog__headerbtn .el-dialog__close {
-  color: white;
-}
-
-.photo-preview-dialog .el-dialog__headerbtn:hover .el-dialog__close {
-  color: #409EFF;
 }
 
 /* 照片网格优化 */
@@ -1014,6 +891,89 @@ export default {
   .photo-actions .el-button {
     padding: 2px 6px;
     font-size: 10px;
+  }
+}
+
+/* 全屏预览样式 */
+.fullscreen-view {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  cursor: pointer;
+  overflow: hidden;
+  touch-action: pan-x; /* 只允许水平滑动 */
+}
+
+.fullscreen-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+  overflow: hidden;
+}
+
+.fullscreen-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.fullscreen-like-button,
+.fullscreen-close-button {
+  position: absolute;
+  top: 30px;
+  z-index: 10;
+}
+
+.fullscreen-like-button {
+  left: 30px;
+}
+
+.fullscreen-close-button {
+  right: 30px;
+}
+
+.fullscreen-like-button .el-button,
+.fullscreen-close-button .el-button {
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.fullscreen-like-button .el-button:hover,
+.fullscreen-close-button .el-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
+}
+
+/* 手机端优化 */
+@media (max-width: 768px) {
+  .fullscreen-like-button,
+  .fullscreen-close-button {
+    top: 20px;
+  }
+  
+  .fullscreen-like-button {
+    left: 20px;
+  }
+  
+  .fullscreen-close-button {
+    right: 20px;
   }
 }
 </style> 
