@@ -603,7 +603,7 @@ export default {
   margin-bottom: 30px;
   background: #f8f9fa;
   border-radius: 12px;
-  /* overflow: hidden; */
+  overflow: hidden;
   /* box-shadow: 0 4px 12px rgba(209, 209, 209, 0.3); */
   
 }
@@ -625,15 +625,15 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #57B9FF 0%, #77B1D4 100%);
   color: white;
   position: relative;
 }
 
-.class-header.parent-class {
+/* .class-header.parent-class {
   background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
   box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
-}
+} */
 
 .class-info {
   display: flex;
@@ -947,8 +947,8 @@ export default {
 
 .fullscreen-like-button .el-button,
 .fullscreen-close-button .el-button {
-  background: rgba(0, 0, 0, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(87, 185, 255, 0.8);
+  border: 2px solid rgba(87, 185, 255, 0.9);
   color: white;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
@@ -956,8 +956,8 @@ export default {
 
 .fullscreen-like-button .el-button:hover,
 .fullscreen-close-button .el-button:hover {
-  background: rgba(0, 0, 0, 0.8);
-  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(87, 185, 255, 1);
+  border-color: rgba(87, 185, 255, 1);
   transform: scale(1.1);
 }
 

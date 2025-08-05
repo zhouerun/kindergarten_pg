@@ -823,7 +823,7 @@ export default {
 
 .timeline {
   position: relative;
-  padding-left: 30px;
+  /* padding-left: 30px; */
 }
 
 .timeline-item {
@@ -1629,8 +1629,8 @@ export default {
 
 .fullscreen-like-button .el-button,
 .fullscreen-close-button .el-button {
-  background: rgba(0, 0, 0, 0.6);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(87, 185, 255, 0.8);
+  border: 2px solid rgba(87, 185, 255, 0.9);
   color: white;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
@@ -1638,8 +1638,8 @@ export default {
 
 .fullscreen-like-button .el-button:hover,
 .fullscreen-close-button .el-button:hover {
-  background: rgba(0, 0, 0, 0.8);
-  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(87, 185, 255, 1);
+  border-color: rgba(87, 185, 255, 1);
   transform: scale(1.1);
 }
 

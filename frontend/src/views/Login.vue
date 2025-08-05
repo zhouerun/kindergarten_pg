@@ -43,6 +43,7 @@
             :loading="loading"
             @click="handleLogin"
             class="login-btn"
+            style="background-color: #57B9FF;"
           >
             {{ loading ? '登录中...' : '登录' }}
           </el-button>
@@ -128,7 +129,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: rgb(230, 230, 230);
+  background: linear-gradient(135deg, #d6efff 0%, lab(84.56% -8.8 -23.66) 50%, #ccdde7 100%);
   padding: 20px;
 }
 

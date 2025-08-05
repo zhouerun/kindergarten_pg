@@ -278,6 +278,15 @@ export default {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   height: 100vh;
+  
+  /* 自定义Element Plus主题色 */
+  --el-color-primary: #57B9FF;
+  --el-color-primary-light-3: #90D5FF;
+  --el-color-primary-light-5: #A8DDFF;
+  --el-color-primary-light-7: #C0E5FF;
+  --el-color-primary-light-8: #CCE9FF;
+  --el-color-primary-light-9: #E6F4FF;
+  --el-color-primary-dark-2: #77B1D4;
 }
 
 .loading-container {
@@ -304,11 +313,11 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #409eff;
+  background-color: #57B9FF;
   color: white;
   padding: 0 15px;
   height: 60px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(87, 185, 255, 0.2);
 }
 
 .logo {
@@ -332,7 +341,7 @@ export default {
 }
 
 .user-info:hover {
-  color: #ffd04b;
+  color: #90D5FF;
 }
 
 .sidebar {
@@ -340,7 +349,7 @@ export default {
   top: 60px;
   left: 0;
   bottom: 0;
-  background-color: #545c64;
+  background-color: #517891;
   transition: width 0.3s;
   z-index: 999;
   overflow-y: auto;
@@ -359,7 +368,7 @@ export default {
 
 /* 移动端头部样式 */
 .mobile-header {
-  background-color: #409eff;
+  background-color: #57B9FF;
   color: white;
   padding: 0 15px;
   height: 50px;
@@ -426,11 +435,11 @@ export default {
 }
 
 .nav-item:hover {
-  color: #409eff;
+  color: #57B9FF;
 }
 
 .nav-item.active {
-  color: #409eff;
+  color: #57B9FF;
 }
 
 .nav-item.active::after {
@@ -441,7 +450,7 @@ export default {
   transform: translateX(-50%);
   width: 20px;
   height: 2px;
-  background-color: #409eff;
+  background-color: #57B9FF;
   border-radius: 1px;
 }
 
@@ -463,13 +472,13 @@ export default {
 .upload-icon-wrapper {
   width: 50px;
   height: 50px;
-  background: linear-gradient(135deg, #409eff, #67c23a);
+  background: linear-gradient(135deg, #57B9FF, #77B1D4);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 2px;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(87, 185, 255, 0.3);
   transition: all 0.3s ease;
 }
 
@@ -481,11 +490,11 @@ export default {
 
 .upload-btn:hover .upload-icon-wrapper {
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+  box-shadow: 0 6px 16px rgba(87, 185, 255, 0.4);
 }
 
 .upload-btn.active .upload-icon-wrapper {
-  background: linear-gradient(135deg, #67c23a, #409eff);
+  background: linear-gradient(135deg, #77B1D4, #57B9FF);
 }
 
 /* 手机端适配 */
