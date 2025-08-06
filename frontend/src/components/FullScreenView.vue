@@ -1,7 +1,7 @@
 <template>
 <!-- 全屏图片展示页面 -->
-<div v-if="visible" class="fullscreen-view" @click="closeFullscreen">
-  <div class="fullscreen-container" @click.stop
+<div v-if="visible" class="fullscreen-view">
+  <div class="fullscreen-container"
     @touchstart="handleTouchStart"
     @touchmove="handleTouchMove"
     @touchend="handleTouchEnd">
@@ -18,7 +18,7 @@
     <div class="fullscreen-like-button">
       <el-button 
         :type="currentPhoto && currentPhoto.liked ? 'danger' : 'primary'"
-        @click="toggleLike(currentPhoto)"
+        @click.stop="toggleLike(currentPhoto)"
         circle
         size="large"
       >
@@ -30,7 +30,7 @@
     
     <!-- 关闭按钮 -->
     <div class="fullscreen-close-button">
-      <el-button @click="closeFullscreen" circle size="large">
+      <el-button @click.stop="closeFullscreen" circle size="large">
         <el-icon><Close /></el-icon>
       </el-button>
     </div>
@@ -97,12 +97,14 @@ export default {
     const currentPhoto = ref(null);
     const currentIndex = ref(0);
     
-    // 图片拖拽相关状态
     const imageTransform = ref({ x: 0, y: 0, scale: 1 });
     const isDragging = ref(false);
     const dragStart = ref({ x: 0, y: 0 });
     const lastTouchDistance = ref(0);
     const isMultiTouch = ref(false);
+    
+    const touchStartTime = ref(0);
+    const clickTimeThreshold = 300;
     
     const isMobile = ref(false);
     const touchMode = ref('none');
@@ -133,52 +135,57 @@ export default {
       return Math.sqrt(dx * dx + dy * dy);
     };
     
+    const handleClick = () => {
+      // 单击退出全屏
+      closeFullscreen();
+    };
+    
+    // 检查是否为按钮元素
+    const isButtonElement = (target) => {
+      return target.closest('.el-button') || 
+             target.closest('.fullscreen-like-button') || 
+             target.closest('.fullscreen-close-button') ||
+             target.closest('.navigation-buttons') ||
+             target.closest('.photo-counter');
+    };
+
     // 处理触摸开始
     const handleTouchStart = (event) => {
       // 检查触摸目标是否为按钮或其子元素
-      const target = event.target;
-      const isButton = target.closest('.el-button') || 
-                      target.closest('.fullscreen-like-button') || 
-                      target.closest('.fullscreen-close-button') ||
-                      target.closest('.navigation-buttons') ||
-                      target.closest('.photo-counter');
-      
-      if (isButton) {
-        // 如果是按钮，不处理拖拽逻辑
+      if (isButtonElement(event.target)) {
+        event.stopPropagation();
         return;
       }
       
       event.preventDefault();
       const touches = event.touches;
       
+      // 记录触摸开始时间和位置
+      touchStartTime.value = Date.now();
+      
       if (touches.length === 1) {
         // 单指触摸 - 开始拖拽
+        touchMode.value = 'none';
         isDragging.value = true;
         isMultiTouch.value = false;
         dragStart.value = {
-          x: touches[0].clientX - imageTransform.value.x,
-          y: touches[0].clientY - imageTransform.value.y
+          x: touches[0].clientX,
+          y: touches[0].clientY
         };
       } else if (touches.length === 2) {
         // 双指触摸 - 开始缩放
         isMultiTouch.value = true;
         isDragging.value = false;
         lastTouchDistance.value = getTouchDistance(touches);
+        touchMode.value = 'scale';
       }
     };
     
     // 处理触摸移动
     const handleTouchMove = (event) => {
       // 检查触摸目标是否为按钮或其子元素
-      const target = event.target;
-      const isButton = target.closest('.el-button') || 
-                      target.closest('.fullscreen-like-button') || 
-                      target.closest('.fullscreen-close-button') ||
-                      target.closest('.navigation-buttons') ||
-                      target.closest('.photo-counter');
-      
-      if (isButton) {
-        // 如果是按钮，不处理拖拽逻辑
+      if (isButtonElement(event.target)) {
+        event.stopPropagation();
         return;
       }
       
@@ -187,25 +194,32 @@ export default {
       
       if (isDragging.value && touches.length === 1) {
         // 单指拖拽
-        const newX = touches[0].clientX - dragStart.value.x;
-        const newY = touches[0].clientY - dragStart.value.y;
-        if (Math.abs(newX) + Math.abs(newY) < 50) {
-          if (Math.abs(newX) > Math.abs(newY)) {
+        const deltaX = touches[0].clientX - dragStart.value.x;
+        const deltaY = touches[0].clientY - dragStart.value.y;
+        const totalDistance = Math.abs(deltaX) + Math.abs(deltaY);
+        
+        // 如果移动距离足够大，确定拖拽模式
+        if (touchMode.value === 'none' && totalDistance > 10) {
+          if (Math.abs(deltaX) > Math.abs(deltaY)) {
             touchMode.value = 'horizontal';
           } else {
             touchMode.value = 'vertical';
           }
         }
-
+        
+        // 根据模式处理拖拽
         if (touchMode.value === 'horizontal') {
-          imageTransform.value.x = newX;
+          // 水平拖拽 - 用于切换图片
+          imageTransform.value.x = deltaX;
           imageTransform.value.y = 0;
-        } else {
-          imageTransform.value.x = newX;
-          imageTransform.value.y = newY;
+        } else if (touchMode.value === 'vertical') {
+          // 垂直拖拽 - 用于退出全屏
+          imageTransform.value.x = deltaX * 0.3; // 轻微的水平跟随
+          imageTransform.value.y = deltaY;
         }
       } else if (isMultiTouch.value && touches.length === 2) {
         // 双指缩放
+        touchMode.value = 'scale';
         const currentDistance = getTouchDistance(touches);
         if (lastTouchDistance.value > 0) {
           const scale = currentDistance / lastTouchDistance.value;
@@ -220,53 +234,61 @@ export default {
     // 处理触摸结束
     const handleTouchEnd = (event) => {
       // 检查触摸目标是否为按钮或其子元素
-      const target = event.target;
-      const isButton = target.closest('.el-button') || 
-                      target.closest('.fullscreen-like-button') || 
-                      target.closest('.fullscreen-close-button') ||
-                      target.closest('.navigation-buttons') ||
-                      target.closest('.photo-counter');
-      
-      if (isButton) {
-        // 如果是按钮，不处理拖拽逻辑
+      if (isButtonElement(event.target)) {
+        event.stopPropagation();
         return;
       }
       
       event.preventDefault();
+      
+      const touchDuration = Date.now() - touchStartTime.value;
+      const deltaX = imageTransform.value.x;
+      const deltaY = imageTransform.value.y;
+      
+      // 如果时间短且移动距离小，则认为是单击
+      if (touchDuration < clickTimeThreshold && Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
+        handleClick();
+        return;
+      }
+      
+      // 根据拖拽模式和距离处理结果
+      if (touchMode.value === 'horizontal') {
+        // 水平拖拽 - 切换图片
+        if (Math.abs(deltaX) >= 100) {
+          if (deltaX > 0) {
+            prevPhoto();
+          } else {
+            nextPhoto();
+          }
+        } else {
+          // 距离不够，恢复原位
+          resetImageTransform();
+        }
+      } else if (touchMode.value === 'vertical') {
+        // 垂直拖拽 - 退出全屏
+        if (Math.abs(deltaY) >= 100) {
+          closeFullscreen();
+        } else {
+          // 距离不够，恢复原位
+          resetImageTransform();
+        }
+      } else if (touchMode.value === 'scale') {
+        // 缩放模式 - 检查是否需要重置缩放
+        if (imageTransform.value.scale < 1) {
+          imageTransform.value.scale = 1;
+        }
+      }
+      
+      // 重置状态
       isDragging.value = false;
       isMultiTouch.value = false;
       lastTouchDistance.value = 0;
-      
-      if (imageTransform.value.scale < 1) {
-        imageTransform.value.scale = 1;
-      }
-      
-      if (touchMode.value === 'none' || (Math.abs(imageTransform.value.x) <= 100 && Math.abs(imageTransform.value.y) <= 100)) {
-          imageTransform.value = { x: 0, y: 0, scale: 1 };
-          touchMode.value = 'none';
-        } else if (touchMode.value === 'vertical') {
-          if (Math.abs(imageTransform.value.y) >= 100) {
-          closeFullscreen();
-          } else {
-            imageTransform.value = { x: 0, y: 0, scale: 1 };
-            touchMode.value = 'none';
-          }
-        } else if (touchMode.value === 'horizontal') {
-          if (Math.abs(imageTransform.value.x) >= 100) {
-            if (imageTransform.value.x > 0) {
-              prevPhoto();
-            } else {
-              nextPhoto();
-            }
-          } else {
-            imageTransform.value = { x: 0, y: 0, scale: 1 };
-            touchMode.value = 'none';
-          }
-        }
-      };
+      touchMode.value = 'none';
+    };
 
     const handleImageError = (event) => {
-      event.target.src = 'https://placehold.co/1024x768'
+      // 使用更合适的默认图片
+      event.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAyNCIgaGVpZ2h0PSI3NjgiIHZpZXdCb3g9IjAgMCAxMDI0IDc2OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjEwMjQiIGhlaWdodD0iNzY4IiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik01MTIgMzA4QzQ2OC4yIDMwOCA0MzIgMzQ0LjIgNDMyIDM4OEM0MzIgNDMxLjggNDY4LjIgNDY4IDUxMiA0NjhDNTU1LjggNDY4IDU5MiA0MzEuOCA1OTIgMzg4QzU5MiAzNDQuMiA1NTUuOCAzMDggNTEyIDMwOFoiIGZpbGw9IiNDQ0NDQ0MiLz4KPHBhdGggZD0iTTUxMiA1MjhDNDY4LjIgNTI4IDQzMiA1NjQuMiA0MzIgNjA4QzQzMiA2NTEuOCA0NjguMiA2ODggNTEyIDY4OEM1NTUuOCA2ODggNTkyIDY1MS44IDU5MiA2MDhDNTkyIDU2NC4yIDU1NS44IDUyOCA1MTIgNTI4WiIgZmlsbD0iI0NDQ0NDQyIvPgo8L3N2Zz4K';
     }
 
     const toggleLike = async (photo) => {
@@ -284,17 +306,21 @@ export default {
       } 
     }
 
-    const closeFullscreen = () => {
-      // 重置图片变换
+    // 重置图片变换状态
+    const resetImageTransform = () => {
       touchMode.value = 'none';
       imageTransform.value = { x: 0, y: 0, scale: 1 };
+    };
+
+    const closeFullscreen = () => {
+      // 重置图片变换
+      resetImageTransform();
       emit('update:visible', false);
       emit('close');
     }
 
     const prevPhoto = () => {
-      touchMode.value = 'none';
-      imageTransform.value = { x: 0, y: 0, scale: 1 };
+      resetImageTransform();
       if (currentIndex.value > 0) {
         currentIndex.value--;
         currentPhoto.value = props.photos[currentIndex.value];
@@ -304,8 +330,7 @@ export default {
     }
 
     const nextPhoto = () => {
-      touchMode.value = 'none';
-      imageTransform.value = { x: 0, y: 0, scale: 1 };
+      resetImageTransform();
       if (currentIndex.value < props.photos.length - 1) {
         currentIndex.value++;
         currentPhoto.value = props.photos[currentIndex.value];
@@ -322,19 +347,24 @@ export default {
         return;
       }
       
-      switch (event.key) {
-        case 'ArrowLeft':
+      const keyActions = {
+        'ArrowLeft': () => {
           event.preventDefault();
           prevPhoto();
-          break;
-        case 'ArrowRight':
+        },
+        'ArrowRight': () => {
           event.preventDefault();
           nextPhoto();
-          break;
-        case 'Escape':
+        },
+        'Escape': () => {
           event.preventDefault();
           closeFullscreen();
-          break;
+        }
+      };
+      
+      const action = keyActions[event.key];
+      if (action) {
+        action();
       }
     }
 
@@ -345,7 +375,7 @@ export default {
         currentPhoto.value = props.photos[props.initialIndex];
         
         // 重置图片变换
-        imageTransform.value = { x: 0, y: 0, scale: 1 };
+        resetImageTransform();
         
         // 设置导航栏z-index为1
         setNavbarZIndex(1);
@@ -355,10 +385,23 @@ export default {
       }
     });
 
-    // 监听窗口大小变化
-    const handleResize = () => {
-      checkIsMobile();
+    // 防抖函数
+    const debounce = (func, wait) => {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
     };
+
+    // 监听窗口大小变化
+    const handleResize = debounce(() => {
+      checkIsMobile();
+    }, 100);
 
     // 设置导航栏z-index的函数
     const setNavbarZIndex = (zIndex) => {
@@ -411,10 +454,10 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2000; /* 全屏组件层级 */
+  z-index: 2000; 
   cursor: pointer;
   overflow: hidden;
-  touch-action: pan-x; /* 只允许水平滑动 */
+  touch-action: none; 
 }
 
 .fullscreen-container {
@@ -439,6 +482,7 @@ export default {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+  will-change: transform; /* 优化拖拽性能 */
 }
 
 .fullscreen-image:active {
@@ -462,18 +506,19 @@ export default {
 
 .fullscreen-like-button .el-button,
 .fullscreen-close-button .el-button {
-  background: rgba(87, 185, 255, 0.8);
-  border: 2px solid rgba(87, 185, 255, 0.9);
+  background: transparent;
+  border: 2px solid rgb(255, 255, 255);
   color: white;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
 }
 
 .fullscreen-like-button .el-button:hover,
-.fullscreen-close-button .el-button:hover {
-  background: rgba(87, 185, 255, 1);
-  border-color: rgba(87, 185, 255, 1);
+.fullscreen-close-button .el-button:hover{
+  background: rgb(238, 255, 175);
+  border-color: rgb(233, 255, 110);
   transform: scale(1.1);
+  color: black;
 }
 
 /* 照片计数器样式 */
@@ -509,17 +554,18 @@ export default {
 
 .nav-button {
   pointer-events: auto;
-  background: rgba(87, 185, 255, 0.8);
-  border: 2px solid rgba(87, 185, 255, 0.9);
+  background: transparent;
+  border: 2px solid rgb(255, 255, 255);
   color: white;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
 }
 
 .nav-button:hover {
-  background: rgba(87, 185, 255, 1);
-  border-color: rgba(87, 185, 255, 1);
+  background: rgb(238, 255, 175);
+  border-color: rgb(233, 255, 110);
   transform: scale(1.1);
+  color: black;
 }
 
 .prev-button {
