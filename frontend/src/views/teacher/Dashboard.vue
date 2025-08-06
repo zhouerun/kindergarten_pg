@@ -589,25 +589,25 @@ export default {
 }
 
 .action-btn:nth-child(1) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #d7dfff 0%, #d1a4ff 100%);
   color: white;
   border: none;
 }
 
 .action-btn:nth-child(2) {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #f9c4ff 0%, #ff9ca9 100%);
   color: white;
   border: none;
 }
 
 .action-btn:nth-child(3) {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #bce0ff 0%, #92faff 100%);
   color: white;
   border: none;
 }
 
 .action-btn:nth-child(4) {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  background: linear-gradient(135deg, #c0f1d1 0%, #9df5e5 100%);
   color: white;
   border: none;
 }

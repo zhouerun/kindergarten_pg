@@ -146,14 +146,14 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button 
-            :type="currentPreviewPhoto?.liked ? 'danger' : 'primary'"
+            :type="currentPreviewPhoto && currentPreviewPhoto.liked ? 'danger' : 'primary'"
             @click="toggleLike(currentPreviewPhoto)"
             class="like-button"
           >
             <el-icon>
-              <component :is="currentPreviewPhoto?.liked ? 'StarFilled' : 'Star'" />
+              <component :is="currentPreviewPhoto && currentPreviewPhoto.liked ? 'StarFilled' : 'Star'" />
             </el-icon>
-            {{ currentPreviewPhoto?.liked ? '取消点赞' : '点赞' }}
+            {{ currentPreviewPhoto && currentPreviewPhoto.liked ? '取消点赞' : '点赞' }}
           </el-button>
           <el-button @click="showPreviewDialog = false" class="close-button">
             <el-icon><Close /></el-icon>
@@ -162,44 +162,19 @@
       </template>
     </el-dialog>
     
-    <!-- 全屏图片展示页面 -->
-    <div v-if="showFullscreenView" class="fullscreen-view" @click="closeFullscreen">
-      <div class="fullscreen-container" @click.stop>
-        <img 
-          v-if="currentPreviewPhoto"
-          :src="getImageUrl(currentPreviewPhoto.path)" 
-          class="fullscreen-image"
-          alt="全屏图片"
-          @error="handleImageError"
-        />
-        
-        <!-- 点赞按钮 -->
-        <div class="fullscreen-like-button">
-          <el-button 
-            :type="currentPreviewPhoto?.liked ? 'danger' : 'primary'"
-            @click="toggleLike(currentPreviewPhoto)"
-            circle
-            size="large"
-          >
-            <el-icon>
-              <component :is="currentPreviewPhoto?.liked ? 'StarFilled' : 'Star'" />
-            </el-icon>
-          </el-button>
-        </div>
-        
-        <!-- 关闭按钮 -->
-        <div class="fullscreen-close-button">
-          <el-button @click="closeFullscreen" circle size="large">
-            <el-icon><Close /></el-icon>
-          </el-button>
-        </div>
-      </div>
-    </div>
+    <!-- 全屏查看组件 -->
+    <FullScreenView
+      :visible="showFullscreenView"
+      :photos="previewPhotos"
+      :initial-index="currentPreviewIndex"
+      @update:visible="showFullscreenView = $event"
+      @close="closeFullscreen"
+    />
     
     <!-- 周/月报预览对话框 -->
     <el-dialog 
       v-model="showReportDialog" 
-      :title="`${reportTitle} - ${selectedChildAlbum?.child?.name || ''}`"
+      :title="`${reportTitle} - ${selectedChildAlbum && selectedChildAlbum.child && selectedChildAlbum.child.name || ''}`"
       width="95%"
       center
       append-to-body
@@ -348,7 +323,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { 
@@ -365,6 +340,7 @@ import {
   Close
 } from '@element-plus/icons-vue';
 import api from '@/utils/axios';
+import FullScreenView from '@/components/FullScreenView.vue';
 
 export default {
   name: 'PhotoAlbums',
@@ -379,7 +355,8 @@ export default {
     StarFilled,
     Document,
     Printer,
-    Close
+    Close,
+    FullScreenView
   },
   setup() {
     const route = useRoute();
@@ -537,124 +514,16 @@ export default {
       currentPreviewIndex.value = photos.findIndex(p => p.id === photo.id);
       showPreviewDialog.value = true;
       showFullscreenView.value = false; // 关闭全屏预览
-      
-      // 添加触摸滑动支持
-      nextTick(() => {
-        addTouchSupport('.preview-image-wrapper', () => showPreviewDialog.value);
-      });
     };
 
     const openFullscreenPhoto = (photo, photos) => {
-      currentPreviewPhoto.value = photo;
       previewPhotos.value = photos;
       currentPreviewIndex.value = photos.findIndex(p => p.id === photo.id);
-      showFullscreenView.value = true;
-      showPreviewDialog.value = false; // 关闭对话框预览
-      
-      // 设置导航栏z-index为1
-      setNavbarZIndex(1);
-      
-      // 添加全屏预览的触摸滑动支持
-      nextTick(() => {
-        addTouchSupport('.fullscreen-container', () => showFullscreenView.value, true);
-      });
-    };
-
-    const openFullscreen = () => {
       showFullscreenView.value = true;
     };
 
     const closeFullscreen = () => {
       showFullscreenView.value = false;
-      
-      // 恢复导航栏z-index为1000
-      setNavbarZIndex(1000);
-    };
-    
-    // 设置导航栏z-index的函数
-    const setNavbarZIndex = (zIndex) => {
-      const navbar = document.querySelector('.mobile-bottom-nav');
-      if (navbar) {
-        navbar.style.zIndex = zIndex;
-      }
-    };
-    
-    // 通用的触摸滑动支持函数
-    const addTouchSupport = (containerSelector, watchTarget, preventVerticalScroll = false) => {
-      const container = document.querySelector(containerSelector);
-      if (!container) return;
-      
-      let startX = 0;
-      let startY = 0;
-      let endX = 0;
-      let endY = 0;
-      
-      const handleTouchStart = (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-      };
-      
-      const handleTouchEnd = (e) => {
-        endX = e.changedTouches[0].clientX;
-        endY = e.changedTouches[0].clientY;
-        
-        const diffX = startX - endX;
-        const diffY = startY - endY;
-        
-        // 确保是水平滑动且滑动距离足够
-        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-          if (diffX > 0) {
-            // 向左滑动，显示下一张
-            nextPreviewPhoto();
-          } else {
-            // 向右滑动，显示上一张
-            prevPreviewPhoto();
-          }
-        }
-      };
-      
-      const handleTouchMove = (e) => {
-        // 如果需要禁用上下滑动
-        if (preventVerticalScroll) {
-          e.preventDefault();
-        }
-      };
-      
-      container.addEventListener('touchstart', handleTouchStart);
-      container.addEventListener('touchend', handleTouchEnd);
-      if (preventVerticalScroll) {
-        container.addEventListener('touchmove', handleTouchMove);
-      }
-      
-      // 清理函数
-      const cleanup = () => {
-        container.removeEventListener('touchstart', handleTouchStart);
-        container.removeEventListener('touchend', handleTouchEnd);
-        if (preventVerticalScroll) {
-          container.removeEventListener('touchmove', handleTouchMove);
-        }
-      };
-      
-      // 在目标状态改变时清理事件监听器
-      watch(watchTarget, (newVal) => {
-        if (!newVal) {
-          cleanup();
-        }
-      });
-    };
-    
-    const prevPreviewPhoto = () => {
-      if (currentPreviewIndex.value > 0) {
-        currentPreviewIndex.value--;
-        currentPreviewPhoto.value = previewPhotos.value[currentPreviewIndex.value];
-      }
-    };
-    
-    const nextPreviewPhoto = () => {
-      if (currentPreviewIndex.value < previewPhotos.value.length - 1) {
-        currentPreviewIndex.value++;
-        currentPreviewPhoto.value = previewPhotos.value[currentPreviewIndex.value];
-      }
     };
     
     const toggleLike = async (photo) => {
@@ -712,14 +581,10 @@ export default {
       generateReport,
       printReport,
       previewPhoto,
-      prevPreviewPhoto,
-      nextPreviewPhoto,
       toggleLike,
       showFullscreenView,
-      openFullscreen,
       closeFullscreen,
-      openFullscreenPhoto,
-      setNavbarZIndex
+      openFullscreenPhoto
     };
   }
 };
@@ -1576,86 +1441,5 @@ export default {
   }
 }
 
-/* 全屏预览样式 */
-.fullscreen-view {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
-  cursor: pointer;
-  overflow: hidden;
-  touch-action: pan-x; /* 只允许水平滑动 */
-}
 
-.fullscreen-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #000;
-  overflow: hidden;
-}
-
-.fullscreen-image {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-}
-
-.fullscreen-like-button,
-.fullscreen-close-button {
-  position: absolute;
-  top: 30px;
-  z-index: 10;
-}
-
-.fullscreen-like-button {
-  left: 30px;
-}
-
-.fullscreen-close-button {
-  right: 30px;
-}
-
-.fullscreen-like-button .el-button,
-.fullscreen-close-button .el-button {
-  background: rgba(87, 185, 255, 0.8);
-  border: 2px solid rgba(87, 185, 255, 0.9);
-  color: white;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.fullscreen-like-button .el-button:hover,
-.fullscreen-close-button .el-button:hover {
-  background: rgba(87, 185, 255, 1);
-  border-color: rgba(87, 185, 255, 1);
-  transform: scale(1.1);
-}
-
-/* 手机端优化 */
-@media (max-width: 768px) {
-  .fullscreen-like-button,
-  .fullscreen-close-button {
-    top: 20px;
-  }
-  
-  .fullscreen-like-button {
-    left: 20px;
-  }
-  
-  .fullscreen-close-button {
-    right: 20px;
-  }
-}
 </style> 

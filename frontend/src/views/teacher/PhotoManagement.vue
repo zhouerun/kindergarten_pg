@@ -122,7 +122,7 @@
                         v-for="photo in timeGroup.photos" 
                         :key="photo.id"
                         class="photo-item"
-                        @click="previewPhoto(photo, timeGroup.photos)"
+                        @click="openFullscreen(photo, timeGroup.photos)"
                       >
                         <img 
                           :src="getImageUrl(photo.path)" 
@@ -154,6 +154,7 @@
                               size="small"
                               type="info"
                               :icon="'Star'"
+                              @click.stop="toggleLike(photo)"
                             >
                               {{ photo.like_count || 0 }}
                             </el-button>
@@ -170,56 +171,13 @@
       </div>
     </div>
     
-    <!-- 照片预览对话框 -->
-    <el-dialog 
-      v-model="showPreviewDialog" 
-      :title="`照片预览 - ${currentPreviewClass || ''}`"
-      width="90%"
-      center
-      append-to-body
-    >
-      <div class="preview-container">
-        <div class="preview-image-wrapper">
-          <img 
-            v-if="currentPreviewPhoto"
-            :src="getImageUrl(currentPreviewPhoto.path)" 
-            class="preview-image"
-            alt="预览图片"
-            @error="handleImageError"
-          />
-        </div>
-        
-        <div class="preview-navigation" v-if="previewPhotos.length > 1">
-          <el-button 
-            @click="prevPreviewPhoto" 
-            :disabled="currentPreviewIndex === 0"
-            type="primary"
-          >
-            <el-icon><ArrowLeft /></el-icon>
-            上一张
-          </el-button>
-          
-          <span class="nav-info">
-            {{ currentPreviewIndex + 1 }} / {{ previewPhotos.length }}
-          </span>
-          
-          <el-button 
-            @click="nextPreviewPhoto" 
-            :disabled="currentPreviewIndex === previewPhotos.length - 1"
-            type="primary"
-          >
-            下一张
-            <el-icon><ArrowRight /></el-icon>
-          </el-button>
-        </div>
-      </div>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showPreviewDialog = false">关闭</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <FullScreenView
+      :visible="showFullscreenView"
+      :photos="previewPhotos"
+      :initial-index="currentPreviewIndex"
+      @update:visible="showFullscreenView = $event"
+      @close="closeFullscreen"
+    />
   </div>
 </template>
 
@@ -233,9 +191,7 @@ import {
   Picture, 
   Location, 
   ArrowUp, 
-  ArrowDown, 
-  ArrowLeft, 
-  ArrowRight,
+  ArrowDown,
   School,
   User,
   Plus,
@@ -243,6 +199,7 @@ import {
   Hide
 } from '@element-plus/icons-vue';
 import api from '@/utils/axios';
+import FullScreenView from '@/components/FullScreenView.vue';
 
 export default {
   name: 'PhotoManagement',
@@ -254,13 +211,12 @@ export default {
     Location,
     ArrowUp,
     ArrowDown,
-    ArrowLeft,
-    ArrowRight,
     School,
     User,
     Plus,
     View,
-    Hide
+    Hide,
+    FullScreenView
   },
   setup() {
     const loading = ref(false);
@@ -270,11 +226,11 @@ export default {
     const expandedPeriods = ref([]);
     
     // 照片预览相关
-    const showPreviewDialog = ref(false);
-    const currentPreviewPhoto = ref(null);
-    const currentPreviewClass = ref('');
     const previewPhotos = ref([]);
     const currentPreviewIndex = ref(0);
+    
+    // 全屏查看相关
+    const showFullscreenView = ref(false);
     
     const formatDate = (dateString) => {
       if (!dateString) return '';
@@ -306,6 +262,14 @@ export default {
         // 默认展开所有班级
         expandedClasses.value = albums.value.map(album => album.class.id);
         
+        // 默认展开所有时间段
+        expandedPeriods.value = [];
+        albums.value.forEach(album => {
+          album.timeGroups.forEach(timeGroup => {
+            expandedPeriods.value.push(timeGroup.period);
+          });
+        });
+        
         console.log('加载的教师相册数据:', albums.value);
       } catch (error) {
         console.error('加载相册失败:', error);
@@ -318,8 +282,26 @@ export default {
     const changeGroupBy = (newGroupBy) => {
       if (groupBy.value !== newGroupBy) {
         groupBy.value = newGroupBy;
-        expandedPeriods.value = []; // 重置展开状态
+        // 不需要重置展开状态，loadAlbums 会自动展开所有时间段
         loadAlbums();
+      }
+    };
+
+    const toggleLike = async (photo) => {
+      try {
+        await api.post('/photos/like', {
+          photoId: photo.id
+        });
+        
+        // 更新本地状态
+        photo.liked = !photo.liked;
+        photo.like_count = photo.liked ? 
+          (photo.like_count || 0) + 1 : 
+          (photo.like_count || 1) - 1;
+        
+        ElMessage.success(photo.liked ? '点赞成功' : '取消点赞');
+      } catch (error) {
+        ElMessage.error('操作失败');
       }
     };
     
@@ -341,38 +323,21 @@ export default {
       }
     };
     
-    const previewPhoto = (photo, photos) => {
-      currentPreviewPhoto.value = photo;
+
+    
+    // 全屏查看照片
+    const openFullscreen = (photo, photos) => {
       previewPhotos.value = photos;
       currentPreviewIndex.value = photos.findIndex(p => p.id === photo.id);
-      
-      // 找到当前照片所属的班级名称
-      for (const album of albums.value) {
-        for (const timeGroup of album.timeGroups) {
-          if (timeGroup.photos.some(p => p.id === photo.id)) {
-            currentPreviewClass.value = album.class.name;
-            break;
-          }
-        }
-        if (currentPreviewClass.value) break;
-      }
-      
-      showPreviewDialog.value = true;
+      showFullscreenView.value = true;
     };
     
-    const prevPreviewPhoto = () => {
-      if (currentPreviewIndex.value > 0) {
-        currentPreviewIndex.value--;
-        currentPreviewPhoto.value = previewPhotos.value[currentPreviewIndex.value];
-      }
+    // 关闭全屏查看
+    const closeFullscreen = () => {
+      showFullscreenView.value = false;
     };
     
-    const nextPreviewPhoto = () => {
-      if (currentPreviewIndex.value < previewPhotos.value.length - 1) {
-        currentPreviewIndex.value++;
-        currentPreviewPhoto.value = previewPhotos.value[currentPreviewIndex.value];
-      }
-    };
+
     
     // 处理图片加载错误
     const handleImageError = (error) => {
@@ -390,20 +355,18 @@ export default {
       groupBy,
       expandedClasses,
       expandedPeriods,
-      showPreviewDialog,
-      currentPreviewPhoto,
-      currentPreviewClass,
       previewPhotos,
       currentPreviewIndex,
+      showFullscreenView,
       formatDate,
       getImageUrl,
       handleImageError,
       changeGroupBy,
+      toggleLike,
       toggleClass,
       togglePeriod,
-      previewPhoto,
-      prevPreviewPhoto,
-      nextPreviewPhoto
+      openFullscreen,
+      closeFullscreen
     };
   }
 };
@@ -450,7 +413,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  background: linear-gradient(135deg, #9dceff 0%, #9be6f0 100%);
   color: white;
 }
 
@@ -607,44 +570,6 @@ export default {
   padding: 40px;
 }
 
-/* 预览对话框样式 */
-.preview-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  /* height: 80vh; */
-}
-
-.preview-image-wrapper {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 80%;
-}
-
-.preview-image {
-  max-width: 100%;
-  height: 60vh;
-  border-radius: 8px;
-  object-fit: contain;
-}
-
-.preview-navigation {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-}
-
-.nav-info {
-  font-size: 14px;
-  color: #606266;
-  padding: 0 15px;
-}
-
-.dialog-footer {
-  text-align: center;
-}
 
 
 
