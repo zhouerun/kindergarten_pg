@@ -1,7 +1,7 @@
 <template>
 <!-- 全屏图片展示页面 -->
-<div v-if="visible" class="fullscreen-view">
-  <div class="fullscreen-container"
+<div v-if="visible" class="fullscreen-view" @click.stop>
+  <div class="fullscreen-container" @click.stop
     @touchstart="handleTouchStart"
     @touchmove="handleTouchMove"
     @touchend="handleTouchEnd">
